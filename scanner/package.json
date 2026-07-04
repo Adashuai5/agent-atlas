@@ -1,0 +1,18 @@
+{
+  "name": "agent-atlas-scanner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only local scanner for Agent Atlas.",
+  "type": "module",
+  "scripts": {
+    "scan": "node src/index.ts",
+    "scan:ada": "AGENT_ATLAS_SKIP_DESKTOP=1 AGENT_ATLAS_PROJECT_ROOTS='/Users/ada/Desktop/下一程' node src/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}
