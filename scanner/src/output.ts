@@ -8,6 +8,7 @@ interface TileNode {
   label: string;
   value: number;
   colorKey: string;
+  scopeKey: string;
   meta: string;
   assets: Asset[];
 }
@@ -58,13 +59,32 @@ function clusterNodes(assets: Asset[]): TileNode[] {
     const [owner, scope, type] = key.split("|");
     return {
       id: key,
-      label: `${owner} / ${type}`,
+      label: `${scope} / ${owner} / ${type}`,
       value: items.length,
       colorKey: owner,
-      meta: scope,
+      scopeKey: scope,
+      meta: "点击下钻",
       assets: items
     };
   }).sort((a, b) => b.value - a.value);
+}
+
+function scopeNodes(assets: Asset[]): TileNode[] {
+  const groups = new Map<string, Asset[]>();
+  for (const asset of assets) {
+    const group = groups.get(asset.scope) ?? [];
+    group.push(asset);
+    groups.set(asset.scope, group);
+  }
+  return [...groups.entries()].map(([scope, items]) => ({
+    id: scope,
+    label: scope,
+    value: items.length,
+    colorKey: scope,
+    scopeKey: scope,
+    meta: "点击看系统",
+    assets: items
+  })).sort((a, b) => b.value - a.value);
 }
 
 function treemap(nodes: TileNode[], x: number, y: number, w: number, h: number): Rect[] {
@@ -125,7 +145,7 @@ function formatBytes(bytes: number): string {
 function renderStaticTile(rect: Rect, total: number): string {
   const compact = rect.w * rect.h < 220 ? " compact" : "";
   const tiny = rect.w * rect.h < 80 ? " tiny" : "";
-  return `<button class="tile${compact}${tiny}" style="left:${rect.x}%;top:${rect.y}%;width:${rect.w}%;height:${rect.h}%;--c:${color(rect.colorKey)}">
+  return `<button class="tile${compact}${tiny}" style="left:${rect.x}%;top:${rect.y}%;width:${rect.w}%;height:${rect.h}%;--c:${color(rect.colorKey)};--s:${color(rect.scopeKey)}">
     <span class="tile-label">${escapeHtml(rect.label)}</span>
     <span class="tile-meta">${escapeHtml(rect.meta)}</span>
     <strong>${rect.value}</strong>
@@ -136,7 +156,8 @@ function renderStaticTile(rect: Rect, total: number): string {
 function renderHtml(atlas: Atlas): string {
   const [topOwner, topOwnerCount] = topEntry(atlas.summary.byOwner);
   const [topType, topTypeCount] = topEntry(atlas.summary.byType);
-  const initialRects = treemap(clusterNodes(atlas.assets), 0, 0, 100, 100);
+  const [topScope, topScopeCount] = topEntry(atlas.summary.byScope);
+  const initialRects = treemap(scopeNodes(atlas.assets), 0, 0, 100, 100);
   const staticTiles = initialRects.map((rect) => renderStaticTile(rect, atlas.summary.assetCount)).join("");
   const data = JSON.stringify(atlas.assets.map((asset) => ({
     id: asset.id,
@@ -165,14 +186,15 @@ function renderHtml(atlas: Atlas): string {
     .topbar { height:96px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; padding:12px 16px; background:var(--panel); border-bottom:1px solid rgba(15,23,42,.14); }
     h1 { margin:0; font-size:21px; line-height:1.12; letter-spacing:0; }
     .answer { margin:6px 0 0; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .controls { display:grid; grid-template-columns:210px repeat(6,auto); gap:8px; align-items:center; }
-    .controls input, .controls button { min-height:34px; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:#fff; color:var(--ink); padding:0 10px; }
+    .controls { display:grid; grid-template-columns:210px repeat(6,auto); gap:8px; align-items:center; overflow-x:auto; max-width:100%; padding-bottom:2px; }
+    .controls input, .controls select, .controls button { min-height:34px; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:#fff; color:var(--ink); padding:0 10px; }
     .controls button.active { background:#152033; color:#fff; border-color:#152033; }
-    .heatmap { position:relative; height:calc(100vh - 96px); padding:8px; background:#101826; }
+    .heatmap { position:relative; height:calc(100vh - 96px); padding:8px; background:#101826; display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:8px; }
     .crumbs { position:absolute; z-index:8; left:18px; top:18px; display:flex; gap:6px; flex-wrap:wrap; max-width:calc(100vw - 420px); }
     .crumbs button { min-height:30px; border:1px solid rgba(255,255,255,.38); border-radius:999px; background:rgba(248,250,252,.9); color:#152033; padding:0 10px; box-shadow:0 8px 28px rgba(0,0,0,.14); }
     .board { position:relative; width:100%; height:100%; overflow:hidden; border-radius:8px; background:#0f172a; box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); }
     .tile { position:absolute; overflow:hidden; border:2px solid #101826; border-radius:7px; color:white; text-align:left; padding:10px; background:radial-gradient(circle at 74% 18%,rgba(255,255,255,.18),transparent 32%),linear-gradient(135deg,var(--c),#172033); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); transition:filter .12s ease,transform .12s ease,border-color .12s ease; }
+    .tile::before { content:""; position:absolute; left:0; top:0; width:100%; height:5px; background:var(--s); box-shadow:0 1px 0 rgba(255,255,255,.22); }
     .tile:hover { z-index:5; filter:brightness(1.08); transform:translateY(-1px); border-color:rgba(255,255,255,.82); }
     .tile-label { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:850; font-size:clamp(11px,1.55vw,24px); text-shadow:0 1px 2px rgba(0,0,0,.28); }
     .tile-meta { display:block; margin-top:4px; color:rgba(255,255,255,.78); font-size:12px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -180,20 +202,25 @@ function renderHtml(atlas: Atlas): string {
     .tile em { position:absolute; right:10px; bottom:9px; font-style:normal; color:rgba(255,255,255,.82); font-size:12px; }
     .tile.compact { padding:7px; }
     .tile.compact .tile-meta { display:none; }
+    .tile.compact .tile-label { font-size:14px; }
     .tile.compact strong { font-size:clamp(14px,2vw,28px); left:7px; bottom:6px; }
+    .tile.asset .tile-meta { display:none; }
+    .tile.asset .tile-label { font-size:clamp(11px,1.05vw,18px); }
+    .tile.asset strong { font-size:clamp(17px,2.15vw,40px); }
     .tile.tiny { padding:0; }
     .tile.tiny .tile-label, .tile.tiny .tile-meta, .tile.tiny strong, .tile.tiny em { display:none; }
-    .detail { position:absolute; right:18px; bottom:18px; z-index:10; width:min(480px,calc(100vw - 36px)); max-height:min(520px,calc(100vh - 136px)); overflow:auto; display:none; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:rgba(248,250,252,.97); box-shadow:0 24px 70px rgba(0,0,0,.36); padding:16px; }
-    .detail.show { display:block; }
+    .detail { min-width:0; height:100%; overflow:auto; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:rgba(248,250,252,.97); box-shadow:0 18px 50px rgba(0,0,0,.22); padding:16px; }
     .detail h2 { margin:0 0 4px; font-size:20px; letter-spacing:0; }
     .detail p { margin:0 0 12px; color:var(--muted); }
     .detail ol { margin:0; padding-left:20px; }
     .detail li { margin:7px 0; overflow-wrap:anywhere; }
-    .detail .close { position:absolute; right:10px; top:10px; width:28px; height:28px; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:#fff; }
-    .detail .drill { min-height:34px; margin:0 0 12px; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:#152033; color:#fff; padding:0 10px; }
+    .detail .muted { color:var(--muted); }
+    .detail .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
+    .detail .stat { border:1px solid rgba(15,23,42,.12); border-radius:8px; padding:8px; background:#fff; }
+    .detail .stat strong { display:block; font-size:20px; line-height:1.1; }
     .en [data-zh] { display:none; }
     body:not(.en) [data-en] { display:none; }
-    @media (max-width:900px) { .topbar { height:150px; grid-template-columns:1fr; align-items:start; } .controls { grid-template-columns:1fr 1fr 1fr; } .answer { white-space:normal; } .heatmap { height:calc(100vh - 150px); padding:5px; } .crumbs { max-width:calc(100vw - 36px); } }
+    @media (max-width:900px) { .topbar { height:170px; grid-template-columns:1fr; align-items:start; } .controls { display:flex; overflow-x:auto; } .controls input { flex:0 0 210px; } .controls select, .controls button { flex:0 0 auto; min-width:82px; } .answer { white-space:normal; } .heatmap { height:calc(100vh - 170px); padding:5px; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) 220px; } .crumbs { max-width:calc(100vw - 36px); } .detail { padding:12px; } .detail h2 { font-size:17px; } .detail ol { padding-left:18px; } }
   </style>
 </head>
 <body>
@@ -201,24 +228,27 @@ function renderHtml(atlas: Atlas): string {
     <div>
       <h1><span data-zh>本机 AI 资产热力图</span><span data-en>Local AI Asset Heatmap</span></h1>
       <p id="answer" class="answer">
-        <span data-zh>共 ${atlas.summary.assetCount} 个资产；最大系统 ${escapeHtml(topOwner)}（${topOwnerCount}），最大类型 ${escapeHtml(topType)}（${topTypeCount}）。点击区块看详情或下钻。</span>
-        <span data-en>${atlas.summary.assetCount} assets. Largest owner: ${escapeHtml(topOwner)} (${topOwnerCount}); largest type: ${escapeHtml(topType)} (${topTypeCount}). Click tiles for detail or drilldown.</span>
+        <span data-zh>${atlas.summary.assetCount} 个资产 · 主要集中在 ${escapeHtml(topScope)} ${topScopeCount} · 最大系统 ${escapeHtml(topOwner)} ${topOwnerCount} · 最大类型 ${escapeHtml(topType)} ${topTypeCount}</span>
+        <span data-en>${atlas.summary.assetCount} assets · top scope ${escapeHtml(topScope)} ${topScopeCount} · top owner ${escapeHtml(topOwner)} ${topOwnerCount} · top type ${escapeHtml(topType)} ${topTypeCount}</span>
       </p>
     </div>
     <div class="controls">
       <input id="search" type="search" placeholder="搜索名称或路径">
-      <button data-mode="cluster" class="active">总览</button>
-      <button data-mode="owner">系统</button>
-      <button data-mode="scope">作用域</button>
-      <button data-mode="type">类型</button>
-      <button data-mode="project">项目</button>
+      <select id="scopeFilter"><option value="">全部作用域</option></select>
+      <select id="ownerFilter"><option value="">全部系统</option></select>
+      <select id="typeFilter"><option value="">全部类型</option></select>
+      <button data-metric="count" class="active">数量</button>
+      <button data-metric="size">体积</button>
       <button id="lang"><span data-zh>English</span><span data-en>中文</span></button>
     </div>
   </header>
   <main class="heatmap">
     <nav id="crumbs" class="crumbs"></nav>
     <section id="board" class="board">${staticTiles}</section>
-    <aside id="detail" class="detail"></aside>
+    <aside id="detail" class="detail">
+      <h2>资产详情</h2>
+      <p class="muted">悬停或点击区块查看路径、体积和修改时间。</p>
+    </aside>
   </main>
   <script id="asset-data" type="application/json">${data}</script>
   <script>
@@ -227,11 +257,16 @@ function renderHtml(atlas: Atlas): string {
     const detail = document.getElementById("detail");
     const search = document.getElementById("search");
     const crumbs = document.getElementById("crumbs");
-    const modeButtons = Array.prototype.slice.call(document.querySelectorAll("[data-mode]"));
-    let mode = "cluster";
-    let stack = [{ label: "全部", assets: allAssets, mode: "cluster" }];
+    const scopeFilter = document.getElementById("scopeFilter");
+    const ownerFilter = document.getElementById("ownerFilter");
+    const typeFilter = document.getElementById("typeFilter");
+    const metricButtons = Array.prototype.slice.call(document.querySelectorAll("[data-metric]"));
+    let metric = "count";
+    let stack = [{ label: "全部", assets: allAssets, level: "scope" }];
 
-    const colors = { codex:"#109182", hermes:"#7048e8", claude:"#c16620", agents:"#2f6eea", unknown:"#65758b", global:"#109182", plugin:"#7048e8", cache:"#7048e8", project:"#c16620", skill:"#16a34a", agent:"#2f6eea", config:"#64748b", memory:"#be123c", mcp:"#c16620", session:"#65758b" };
+    const colors = { codex:"#109182", hermes:"#7048e8", claude:"#c16620", agents:"#2f6eea", unknown:"#65758b", global:"#109182", plugin:"#7048e8", cache:"#8b5cf6", project:"#c16620", skill:"#16a34a", agent:"#2f6eea", config:"#64748b", memory:"#be123c", mcp:"#c16620", session:"#65758b" };
+    const MAX_LEAF_TILES = 80;
+    const LEVELS = ["scope", "owner", "source", "type", "assets"];
 
     function group(items, keyFn) {
       const out = new Map();
@@ -243,34 +278,113 @@ function renderHtml(atlas: Atlas): string {
       return out;
     }
 
-    function nodesFor(items, currentMode) {
-      if (currentMode === "assets") {
-        return items.map((asset) => ({ id: asset.id, label: asset.name, value: Math.max(1, Math.round(asset.sizeBytes / 1024)), valueLabel: bytes(asset.sizeBytes), colorKey: asset.owner, meta: asset.type + " · " + asset.scope, assets: [asset], leaf: true })).sort((a,b) => b.value - a.value);
+    function setupFilters() {
+      fillFilter(scopeFilter, unique(allAssets.map((asset) => asset.scope)));
+      fillFilter(ownerFilter, unique(allAssets.map((asset) => asset.owner)));
+      fillFilter(typeFilter, unique(allAssets.map((asset) => asset.type)));
+    }
+
+    function fillFilter(select, values) {
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function unique(values) {
+      return Array.from(new Set(values)).sort();
+    }
+
+    function filteredRoot() {
+      return allAssets.filter((asset) => {
+        if (scopeFilter.value && asset.scope !== scopeFilter.value) return false;
+        if (ownerFilter.value && asset.owner !== ownerFilter.value) return false;
+        if (typeFilter.value && asset.type !== typeFilter.value) return false;
+        return true;
+      });
+    }
+
+    function nodesFor(items, level) {
+      if (level === "assets") {
+        const sorted = items.slice().sort((a,b) => b.sizeBytes - a.sizeBytes);
+        const visible = sorted.slice(0, MAX_LEAF_TILES);
+        const rest = sorted.slice(MAX_LEAF_TILES);
+        const nodes = visible.map((asset) => ({ id: asset.id, label: asset.name, value: Math.max(1, Math.round(asset.sizeBytes / 1024)), valueLabel: bytes(asset.sizeBytes), colorKey: asset.owner, scopeKey: asset.scope, meta: asset.scope + " / " + asset.owner + " / " + asset.type + " · " + bytes(asset.sizeBytes), assets: [asset], leaf: true }));
+        if (rest.length) {
+          const size = rest.reduce((sum, asset) => sum + asset.sizeBytes, 0);
+          nodes.push({ id: "other:" + rest.length, label: "其他 " + rest.length, value: Math.max(1, Math.round(size / 1024)), valueLabel: bytes(size), colorKey: dominant(rest, "owner"), scopeKey: dominant(rest, "scope"), meta: scopeMix(rest), assets: rest, leaf: true });
+        }
+        return nodes.sort((a,b) => b.value - a.value);
       }
       const keyFn = {
-        cluster: (a) => a.owner + "|" + a.scope + "|" + a.type,
-        owner: (a) => a.owner,
         scope: (a) => a.scope,
-        type: (a) => a.type,
-        project: (a) => a.projectPath || "global"
-      }[currentMode];
+        owner: (a) => a.owner,
+        source: (a) => sourceGroup(a),
+        type: (a) => a.type
+      }[level];
       return Array.from(group(items, keyFn).entries()).map(([key, assets]) => {
-        const parts = key.split("|");
+        const value = metric === "size" ? assets.reduce((sum, asset) => sum + asset.sizeBytes, 0) : assets.length;
         return {
           id: key,
-          label: currentMode === "cluster" ? parts[1] + " / " + parts[0] + " / " + parts[2] : shortLabel(key),
-          value: assets.length,
-          valueLabel: String(assets.length),
-          colorKey: currentMode === "scope" || currentMode === "type" ? key : assets[0].owner,
-          meta: currentMode === "cluster" ? "点击下钻" : currentMode,
+          label: labelFor(level, key),
+          value: metric === "size" ? Math.max(1, Math.round(value / 1024)) : value,
+          valueLabel: metric === "size" ? bytes(value) : String(value),
+          colorKey: level === "scope" || level === "type" ? key : dominant(assets, "owner"),
+          scopeKey: dominant(assets, "scope"),
+          meta: metaFor(level, assets),
           assets,
           leaf: false
         };
       }).sort((a,b) => b.value - a.value);
     }
 
+    function sourceGroup(asset) {
+      const parts = asset.path.split("/");
+      const pluginIndex = parts.lastIndexOf("plugins");
+      if (pluginIndex >= 0 && parts[pluginIndex + 1]) return "plugin: " + parts[pluginIndex + 1];
+      const tmpPluginIndex = parts.findIndex((part, index) => part === ".tmp" && parts[index + 1] === "plugins");
+      if (tmpPluginIndex >= 0 && parts[tmpPluginIndex + 3]) return "plugin: " + parts[tmpPluginIndex + 3];
+      if (asset.projectPath) return "project: " + shortLabel(asset.projectPath);
+      const skillIndex = parts.lastIndexOf("skills");
+      if (skillIndex >= 0) return asset.scope + ": " + asset.owner + " skills";
+      const agentIndex = Math.max(parts.lastIndexOf("agents"), parts.lastIndexOf("subagents"));
+      if (agentIndex >= 0) return asset.scope + ": " + asset.owner + " agents";
+      return asset.scope + ": " + asset.owner + " " + asset.type;
+    }
+
+    function labelFor(level, key) {
+      if (level === "source") return shortSourceLabel(key);
+      return key;
+    }
+
+    function shortSourceLabel(value) {
+      if (value.startsWith("plugin: ")) return value.slice(8);
+      if (value.startsWith("project: ")) return value.slice(9);
+      return value;
+    }
+
+    function metaFor(level, assets) {
+      const next = { scope:"系统", owner:"来源", source:"类型", type:"资产" }[level];
+      return scopeMix(assets) + " · 点击看" + next;
+    }
+
+    function dominant(items, field) {
+      const counts = {};
+      items.forEach((item) => counts[item[field]] = (counts[item[field]] || 0) + 1);
+      return Object.entries(counts).sort((a,b) => b[1] - a[1])[0][0] || "unknown";
+    }
+
+    function scopeMix(items) {
+      const counts = {};
+      items.forEach((item) => counts[item.scope] = (counts[item.scope] || 0) + 1);
+      return Object.entries(counts).sort((a,b) => b[1] - a[1]).map(([scope, count]) => scope + ":" + count).join(" ");
+    }
+
     function shortLabel(value) {
       if (value === "global") return "global";
+      if (value === "plugin/cache") return "plugin/cache";
       const parts = value.split("/");
       return parts[parts.length - 1] || value;
     }
@@ -299,21 +413,28 @@ function renderHtml(atlas: Atlas): string {
     function render() {
       const current = stack[stack.length - 1];
       const q = search.value.trim().toLowerCase();
-      const source = q ? current.assets.filter((a) => (a.name + " " + a.path + " " + a.owner + " " + a.type + " " + a.scope).toLowerCase().includes(q)) : current.assets;
-      const nodes = nodesFor(source, current.mode);
-      const rects = treemap(nodes, 0, 0, 100, 100);
+      const source = q ? current.assets.filter((a) => (a.name + " " + a.path + " " + a.owner + " " + a.type + " " + a.scope + " " + sourceGroup(a)).toLowerCase().includes(q)) : current.assets;
+      const nodes = nodesFor(source, current.level);
+      const crumbSpace = stack.length > 1 ? 6 : 0;
+      const rects = treemap(nodes, 0, crumbSpace, 100, 100 - crumbSpace);
       const total = Math.max(1, nodes.reduce((sum, node) => sum + node.value, 0));
       board.innerHTML = rects.map((r) => tileHtml(r, total)).join("");
-      board.querySelectorAll(".tile").forEach((tile) => tile.addEventListener("click", () => selectNode(nodes.find((n) => n.id === tile.dataset.id))));
+      board.querySelectorAll(".tile").forEach((tile) => {
+        const node = nodes.find((n) => n.id === tile.dataset.id);
+        tile.addEventListener("mouseenter", () => showDetail(node));
+        tile.addEventListener("focus", () => showDetail(node));
+        tile.addEventListener("click", () => selectNode(node));
+      });
       renderCrumbs();
+      showSummary(current, nodes);
     }
 
     function tileHtml(r, total) {
       const area = r.w * r.h;
-      const cls = "tile" + (area < 220 ? " compact" : "") + (area < 80 ? " tiny" : "");
+      const cls = "tile" + (r.leaf ? " asset" : "") + (area < 220 ? " compact" : "") + (area < 80 ? " tiny" : "");
       const percent = Math.round((r.value / total) * 100) + "%";
       const valueLabel = r.valueLabel || String(r.assets.length);
-      return '<button class="' + cls + '" data-id="' + escAttr(r.id) + '" style="left:' + r.x + '%;top:' + r.y + '%;width:' + r.w + '%;height:' + r.h + '%;--c:' + (colors[r.colorKey] || colors.unknown) + '">' +
+      return '<button class="' + cls + '" data-id="' + escAttr(r.id) + '" style="left:' + r.x + '%;top:' + r.y + '%;width:' + r.w + '%;height:' + r.h + '%;--c:' + (colors[r.colorKey] || colors.unknown) + ';--s:' + (colors[r.scopeKey] || colors.unknown) + '">' +
         '<span class="tile-label">' + esc(r.label) + '</span><span class="tile-meta">' + esc(r.meta) + '</span><strong>' + esc(valueLabel) + '</strong><em>' + percent + '</em></button>';
     }
 
@@ -324,44 +445,79 @@ function renderHtml(atlas: Atlas): string {
         return;
       }
       const current = stack[stack.length - 1];
-      const nextMode = current.mode === "type" || current.mode === "cluster" ? "assets" : "cluster";
-      stack.push({ label: node.label, assets: node.assets, mode: nextMode });
-      detail.classList.remove("show");
+      const nextLevel = nextDrillLevel(current.level);
+      stack.push({ label: node.label, assets: node.assets, level: nextLevel });
       search.value = "";
       render();
     }
 
+    function nextDrillLevel(level) {
+      const index = LEVELS.indexOf(level);
+      return LEVELS[Math.min(index + 1, LEVELS.length - 1)];
+    }
+
     function showDetail(node) {
+      if (!node) return;
       const top = node.assets.slice().sort((a,b) => b.sizeBytes - a.sizeBytes).slice(0, 18);
-      detail.classList.add("show");
-      detail.innerHTML = '<button class="close">×</button><h2>' + esc(node.label) + '</h2><p>' + node.assets.length + ' assets · ' + esc(node.meta) + '</p>' +
-        '<ol>' + top.map((a) => '<li>' + esc(a.name + ' · ' + a.type + ' · ' + a.scope + ' · ' + a.path) + '</li>').join("") + '</ol>';
-      detail.querySelector(".close").addEventListener("click", () => detail.classList.remove("show"));
+      const size = node.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0);
+      detail.innerHTML = '<h2>' + esc(node.label) + '</h2><p>' + node.assets.length + ' 个资产 · ' + esc(scopeMix(node.assets)) + '</p>' +
+        '<div class="stats"><div class="stat"><span>数量</span><strong>' + node.assets.length + '</strong></div><div class="stat"><span>体积</span><strong>' + esc(bytes(size)) + '</strong></div></div>' +
+        '<ol>' + top.map((a) => '<li><strong>' + esc(a.scope + ' / ' + a.owner + ' / ' + a.type) + '</strong><br>' + esc(a.name + ' · ' + bytes(a.sizeBytes) + ' · ' + date(a.modifiedAt)) + '<br>' + esc(a.path) + '</li>').join("") + '</ol>';
+    }
+
+    function showSummary(current, nodes) {
+      const size = current.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0);
+      const top = nodes.slice(0, 8);
+      detail.innerHTML = '<h2>' + esc(current.label) + '</h2><p class="muted">' + esc(levelName(current.level)) + ' · ' + current.assets.length + ' 个资产</p>' +
+        '<div class="stats"><div class="stat"><span>数量</span><strong>' + current.assets.length + '</strong></div><div class="stat"><span>体积</span><strong>' + esc(bytes(size)) + '</strong></div></div>' +
+        '<ol>' + top.map((node) => '<li><strong>' + esc(node.label) + '</strong><br>' + esc(node.valueLabel + ' · ' + node.meta) + '</li>').join("") + '</ol>';
+    }
+
+    function levelName(level) {
+      return { scope:"作用域", owner:"系统", source:"来源", type:"类型", assets:"资产" }[level] || level;
     }
 
     function renderCrumbs() {
       crumbs.innerHTML = stack.map((item, index) => '<button data-index="' + index + '">' + esc(item.label) + '</button>').join("");
       crumbs.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
         stack = stack.slice(0, Number(button.dataset.index) + 1);
-        detail.classList.remove("show");
         render();
       }));
     }
 
-    modeButtons.forEach((button) => button.addEventListener("click", () => {
-      modeButtons.forEach((b) => b.classList.remove("active"));
+    function resetToRoot() {
+      const assets = filteredRoot();
+      stack = [{ label: rootLabel(), assets, level: rootLevel() }];
+      render();
+    }
+
+    function rootLabel() {
+      const parts = [scopeFilter.value, ownerFilter.value, typeFilter.value].filter(Boolean);
+      return parts.length ? parts.join(" / ") : "全部";
+    }
+
+    function rootLevel() {
+      if (scopeFilter.value === "project") return "source";
+      if (scopeFilter.value && ownerFilter.value) return "source";
+      if (scopeFilter.value) return "owner";
+      return "scope";
+    }
+
+    metricButtons.forEach((button) => button.addEventListener("click", () => {
+      metricButtons.forEach((b) => b.classList.remove("active"));
       button.classList.add("active");
-      mode = button.dataset.mode;
-      stack = [{ label: "全部", assets: allAssets, mode }];
-      detail.classList.remove("show");
+      metric = button.dataset.metric;
       render();
     }));
     search.addEventListener("input", render);
+    [scopeFilter, ownerFilter, typeFilter].forEach((select) => select.addEventListener("change", resetToRoot));
     document.getElementById("lang").addEventListener("click", () => document.body.classList.toggle("en"));
     function bytes(n) { if (n < 1024) return n + " B"; if (n < 1024 * 1024) return Math.round(n / 1024) + " KB"; return (n / 1024 / 1024).toFixed(1) + " MB"; }
+    function date(value) { return String(value || "").slice(0, 10); }
     function esc(value) { return String(value).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
     function escAttr(value) { return esc(value).replace(/"/g, "&quot;"); }
-    render();
+    setupFilters();
+    resetToRoot();
   </script>
 </body>
 </html>`;
