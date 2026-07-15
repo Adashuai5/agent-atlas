@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T16:41:30.700Z",
+  "generatedAt": "2026-07-15T16:53:25.380Z",
   "computer": {
     "hostname": "AdadeMacBook-Pro.local",
     "home": "/Users/ada"
@@ -20764,7 +20764,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/agent-atlas",
       "projectPath": "/Users/ada/Desktop/agent-atlas",
-      "sizeBytes": 9206789,
+      "sizeBytes": 4737795,
       "modifiedAt": "2026-07-14T08:24:39.279Z",
       "signals": {
         "isDirectory": true,
@@ -20800,7 +20800,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/quota-autopilot",
       "projectPath": "/Users/ada/Desktop/quota-autopilot",
-      "sizeBytes": 219334,
+      "sizeBytes": 228207,
       "modifiedAt": "2026-07-15T15:49:06.000Z",
       "signals": {
         "isDirectory": true,
@@ -20818,7 +20818,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 1501226,
+      "sizeBytes": 1500482,
       "modifiedAt": "2026-07-04T04:30:49.071Z",
       "signals": {
         "isDirectory": true,
@@ -22666,7 +22666,7 @@
       "scope": "global",
       "path": "/Users/ada/.codex",
       "projectPath": null,
-      "sizeBytes": 7033958064,
+      "sizeBytes": 7031893813,
       "modifiedAt": "2026-07-15T16:40:40.291Z",
       "signals": {
         "isDirectory": true,
@@ -57508,7 +57508,7 @@
       "scope": "global",
       "path": "/Users/ada/.codex/sessions",
       "projectPath": null,
-      "sizeBytes": 93190865,
+      "sizeBytes": 98271378,
       "modifiedAt": "2026-04-26T05:01:53.515Z",
       "signals": {
         "isDirectory": true,
@@ -71424,7 +71424,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/agent-atlas",
       "projectPath": "/Users/ada/Desktop/agent-atlas",
-      "sizeBytes": 9206789,
+      "sizeBytes": 4737795,
       "modifiedAt": "2026-07-14T08:24:39.279Z",
       "signals": {
         "isDirectory": true,
@@ -71460,7 +71460,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/quota-autopilot",
       "projectPath": "/Users/ada/Desktop/quota-autopilot",
-      "sizeBytes": 219334,
+      "sizeBytes": 228207,
       "modifiedAt": "2026-07-15T15:49:06.000Z",
       "signals": {
         "isDirectory": true,
@@ -71478,7 +71478,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 1501226,
+      "sizeBytes": 1500482,
       "modifiedAt": "2026-07-04T04:30:49.071Z",
       "signals": {
         "isDirectory": true,

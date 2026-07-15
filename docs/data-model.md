@@ -55,8 +55,13 @@ AI Markdown renderers. It adds:
 - `systems`: per-system resource mix, influence, and health
 - `resources`: effective state, confidence, and the reason for that judgment
 - `issues`: severity, evidence asset IDs, and recommended next action
-- `stats`: effective, discovered, and folded-noise counts
+- `stats`: effective, direct-project, inherited-global, discovered, and
+  folded-noise counts
 
 Health values: `healthy`, `attention`, `warning`, `inactive`.
 
 Confidence values: `confirmed`, `inferred`, `unknown`.
+
+The HTML embeds a compact view model only: effective resources plus evidence
+for actionable issues. Full inactive/cache/source assets remain in JSON and are
+not duplicated for every project scope.

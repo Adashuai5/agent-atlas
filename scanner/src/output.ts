@@ -20,9 +20,29 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char]!);
 }
 
+function compactSnapshotForHtml(snapshot: ReturnType<typeof buildSnapshot>) {
+  const issues = snapshot.issues.filter((issue) => issue.severity !== "info");
+  const issueAssetIds = new Set(issues.flatMap((issue) => issue.assetIds));
+  const resources = snapshot.resources
+    .filter((resource) => resource.effective || issueAssetIds.has(resource.id))
+    .map((resource) => ({
+      id: resource.id,
+      name: resource.name,
+      type: resource.type,
+      owner: resource.owner,
+      scope: resource.scope,
+      path: resource.path,
+      health: resource.health,
+      confidence: resource.confidence,
+      effective: resource.effective,
+      reason: resource.reason,
+      reasonEn: resource.reasonEn
+    }));
+  return { ...snapshot, resources, issues };
+}
+
 function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: ReturnType<typeof buildSnapshot>[]): string {
-  const data = JSON.stringify(snapshot).replace(/</g, "\\u003c");
-  const scopesData = JSON.stringify(scopeSnapshots).replace(/</g, "\\u003c");
+  const scopesData = JSON.stringify(scopeSnapshots.map(compactSnapshotForHtml)).replace(/</g, "\\u003c");
   const contextsData = JSON.stringify(scopeSnapshots.map((scope) => ({ zh: renderContextMarkdown(scope, "zh"), en: renderContextMarkdown(scope, "en") }))).replace(/</g, "\\u003c");
   const actionableIssues = snapshot.issues.filter((issue) => issue.severity !== "info").length;
   const projectLabel = snapshot.project?.name ?? "本机全局环境";
@@ -108,8 +128,11 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
     .search { width:min(330px,100%); height:38px; border:1px solid var(--line); border-radius:9px; padding:0 11px; background:#f8fafc; color:var(--ink); }
     .chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
     .chip { border:1px solid var(--line); border-radius:999px; background:#fff; color:#4f5e73; padding:5px 9px; font-size:12px; }
+    button.chip.active { border-color:#142033; background:#142033; color:#fff; }
     .resourceList { padding:6px 18px 18px; }
-    .resourceRow { display:grid; grid-template-columns:minmax(180px,1.1fr) 130px 130px minmax(220px,1.5fr); gap:14px; align-items:start; padding:13px 0; border-bottom:1px solid var(--line); }
+    .resourceHeader,.resourceRow { display:grid; grid-template-columns:minmax(160px,1.05fr) 105px 120px minmax(160px,1fr) minmax(210px,1.35fr); gap:14px; align-items:start; }
+    .resourceHeader { padding:10px 18px; border-bottom:1px solid var(--line); background:#f7f9fc; color:var(--muted); font-size:11px; font-weight:700; }
+    .resourceRow { padding:13px 0; border-bottom:1px solid var(--line); }
     .resourceRow:last-child { border-bottom:0; }
     .resourceName strong { display:block; overflow-wrap:anywhere; }
     .resourceName span,.resourcePath,.resourceReason { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
@@ -139,8 +162,9 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
       .issuesPanel { max-height:360px; }
       .detailTitle { display:block; }
       .search { margin-top:13px; }
+      .resourceHeader { display:none; }
       .resourceRow { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; }
-      .resourceReason,.resourcePath { grid-column:1 / -1; }
+      .resourceSource,.resourceReason,.resourcePath { grid-column:1 / -1; }
     }
     @media (max-width:520px) {
       .scopeControls { max-width:285px; }
@@ -152,6 +176,8 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
       .legend { justify-content:flex-start; margin-top:10px; }
       .mapBoard { height:430px; }
       .systemGroup { min-width:130px; }
+      .mapBoard { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); height:auto; max-height:560px; }
+      .systemGroup { min-width:0; height:240px; }
     }
   </style>
 </head>
@@ -172,16 +198,16 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
         <p id="conclusionDetail">${escapeHtml(snapshot.conclusion.detail)}</p>
       </div>
       <div class="heroStats">
-        <div class="heroStat"><span data-i18n="effective">实际相关</span><strong id="effectiveCount">${snapshot.stats.effective}</strong></div>
-        <div class="heroStat"><span data-i18n="review">需要确认</span><strong id="issueCount">${actionableIssues}</strong></div>
-        <div class="heroStat"><span data-i18n="folded">已折叠噪声</span><strong id="noiseCount">${snapshot.stats.hiddenNoise}</strong></div>
+        <div class="heroStat"><span id="statOneLabel">系统</span><strong id="statOneValue">${snapshot.systems.length}</strong></div>
+        <div class="heroStat"><span id="statTwoLabel">默认可见</span><strong id="statTwoValue">${snapshot.stats.effective}</strong></div>
+        <div class="heroStat"><span id="statThreeLabel">待确认</span><strong id="statThreeValue">${actionableIssues}</strong></div>
       </div>
     </section>
 
     <section id="overview" class="overview">
       <article class="panel">
         <header class="panelHead">
-          <div><h3 data-i18n="systemStatus">当前系统状态</h3><p data-i18n="mapHelp">面积表示影响权重，颜色表示健康状态；点击进入详情。</p></div>
+          <div><h3 data-i18n="systemStatus">当前系统状态</h3><p id="mapHelp">全局系统等宽展示；系统内部面积表示可用资源构成。</p></div>
           <div class="legend">
             <span><i style="--dot:var(--healthy)"></i><b data-i18n="healthy">正常</b></span>
             <span><i style="--dot:var(--attention)"></i><b data-i18n="attention">待确认</b></span>
@@ -206,6 +232,7 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
         </div>
         <div id="chips" class="chips"></div>
       </div>
+      <div class="resourceHeader"><span data-i18n="name">名称</span><span data-i18n="status">状态</span><span data-i18n="source">来源</span><span data-i18n="basis">判断依据</span><span data-i18n="path">路径</span></div>
       <div id="resourceList" class="resourceList"></div>
     </section>
 
@@ -218,18 +245,17 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
   </main>
 
   <script>
-    const initialSnapshot = ${data};
     const scopeSnapshots = ${scopesData};
     const scopeContexts = ${contextsData};
-    let snapshot = scopeSnapshots[0] || initialSnapshot;
+    let snapshot = scopeSnapshots[0];
     const overview = document.getElementById("overview");
     const detailView = document.getElementById("detailView");
     const mapBoard = document.getElementById("mapBoard");
     const issueList = document.getElementById("issueList");
     const detailSearch = document.getElementById("detailSearch");
     const translations = {
-      zh:{ lastScan:"最后扫描",aiContext:"给 AI 的上下文 ↗",currentConclusion:"当前结论",effective:"实际相关",review:"需要确认",folded:"已折叠噪声",systemStatus:"当前系统状态",mapHelp:"面积表示影响权重，颜色表示健康状态；点击进入详情。",healthy:"正常",attention:"待确认",warning:"冲突",inactive:"未启用",needsAction:"需要处理",issueHelp:"只显示会影响判断的高信号问题。",back:"← 返回系统总览",aiModalTitle:"给 AI 的当前上下文",copyMarkdown:"复制 Markdown",close:"关闭",next:"建议",scopeProject:"当前项目",scopeGlobal:"本机全局",search:"搜索名称或路径",emptyIssues:"当前没有需要处理的问题。",emptyResources:"没有匹配资源",resourceSummary:"个匹配资源；列表优先显示冲突和待确认项。",confidence:"置信度",copied:"已复制" },
-      en:{ lastScan:"Last scan",aiContext:"AI context ↗",currentConclusion:"Current conclusion",effective:"Effective",review:"Review",folded:"Folded noise",systemStatus:"Current system status",mapHelp:"Area shows influence; color shows health. Click for details.",healthy:"Healthy",attention:"Review",warning:"Conflict",inactive:"Inactive",needsAction:"Needs action",issueHelp:"Only high-signal issues that affect interpretation.",back:"← Back to system overview",aiModalTitle:"Current context for AI",copyMarkdown:"Copy Markdown",close:"Close",next:"Next",scopeProject:"Current project",scopeGlobal:"Global machine",search:"Search name or path",emptyIssues:"No actionable issue in this scope.",emptyResources:"No matching resources",resourceSummary:" matching resources; conflicts and uncertain items appear first.",confidence:"Confidence",copied:"Copied" }
+      zh:{ lastScan:"最后扫描",aiContext:"给 AI 的上下文 ↗",currentConclusion:"当前结论",systems:"系统",visible:"默认可见",direct:"直接配置",inherited:"继承全局",review:"待确认",systemStatus:"当前系统状态",mapGlobalHelp:"全局系统等宽展示；系统内部面积表示可用资源构成。",mapProjectHelp:"项目直接配置获得更高权重；颜色表示健康状态。",healthy:"正常",attention:"待确认",warning:"冲突",inactive:"未启用",needsAction:"需要处理",issueHelp:"只显示会影响判断的高信号问题。",back:"← 返回系统总览",aiModalTitle:"给 AI 的当前上下文",copyMarkdown:"复制 Markdown",close:"关闭",next:"建议",scopeProject:"当前项目",scopeGlobal:"本机全局",search:"搜索名称或路径",emptyIssues:"当前没有需要处理的问题。",emptyResources:"没有匹配资源",resourceSummary:"个匹配资源；列表优先显示冲突和待确认项。",confidence:"置信度",copied:"已复制",all:"全部",name:"名称",status:"状态",source:"来源",basis:"判断依据",path:"路径" },
+      en:{ lastScan:"Last scan",aiContext:"AI context ↗",currentConclusion:"Current conclusion",systems:"Systems",visible:"Default visible",direct:"Direct config",inherited:"Inherited",review:"Review",systemStatus:"Current system status",mapGlobalHelp:"Systems use equal width globally; inner area shows available resource mix.",mapProjectHelp:"Direct project configuration receives more weight; color shows health.",healthy:"Healthy",attention:"Review",warning:"Conflict",inactive:"Inactive",needsAction:"Needs action",issueHelp:"Only high-signal issues that affect interpretation.",back:"← Back to system overview",aiModalTitle:"Current context for AI",copyMarkdown:"Copy Markdown",close:"Close",next:"Next",scopeProject:"Current project",scopeGlobal:"Global machine",search:"Search name or path",emptyIssues:"No actionable issue in this scope.",emptyResources:"No matching resources",resourceSummary:" matching resources; conflicts and uncertain items appear first.",confidence:"Confidence",copied:"Copied",all:"All",name:"Name",status:"Status",source:"Source",basis:"Assessment basis",path:"Path" }
     };
     const typeLabelsByLang = {
       zh:{ skill:"技能",memory:"记忆",mcp:"MCP",agent:"Agent",config:"配置",project:"项目",session:"会话" },
@@ -245,6 +271,7 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
       warning:["#cf4c40","#8b2c27"], inactive:["#718096","#455267"]
     };
     let detailFilter = null;
+    let detailHealthFilter = "all";
     let language = "zh";
 
     function t(key) { return translations[language][key] || key; }
@@ -272,7 +299,7 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
     function applyScope() {
       const projectMode = document.getElementById("scopeMode").value === "project";
       document.getElementById("projectSelect").hidden = !projectMode;
-      snapshot = scopeSnapshots[currentScopeIndex()] || scopeSnapshots[0] || initialSnapshot;
+      snapshot = scopeSnapshots[currentScopeIndex()] || scopeSnapshots[0];
       detailView.classList.remove("open");
       overview.style.display = "grid";
       detailFilter = null;
@@ -287,9 +314,14 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
       hero.style.setProperty("--status", "var(--" + snapshot.conclusion.health + ")");
       document.getElementById("conclusionTitle").textContent = language === "zh" ? snapshot.conclusion.title : snapshot.conclusion.titleEn;
       document.getElementById("conclusionDetail").textContent = language === "zh" ? snapshot.conclusion.detail : snapshot.conclusion.detailEn;
-      document.getElementById("effectiveCount").textContent = snapshot.stats.effective;
-      document.getElementById("issueCount").textContent = actionable;
-      document.getElementById("noiseCount").textContent = snapshot.stats.hiddenNoise;
+      const projectScope = Boolean(snapshot.project);
+      document.getElementById("statOneLabel").textContent = projectScope ? t("direct") : t("systems");
+      document.getElementById("statOneValue").textContent = projectScope ? snapshot.stats.direct : snapshot.systems.length;
+      document.getElementById("statTwoLabel").textContent = projectScope ? t("inherited") : t("visible");
+      document.getElementById("statTwoValue").textContent = projectScope ? snapshot.stats.inherited : snapshot.stats.effective;
+      document.getElementById("statThreeLabel").textContent = t("review");
+      document.getElementById("statThreeValue").textContent = actionable;
+      document.getElementById("mapHelp").textContent = t(projectScope && snapshot.stats.direct > 0 ? "mapProjectHelp" : "mapGlobalHelp");
     }
 
     function worst(items) {
@@ -350,6 +382,7 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
 
     function openDetail(filter) {
       detailFilter = filter;
+      detailHealthFilter = "all";
       overview.style.display = "none";
       detailView.classList.add("open");
       detailSearch.value = "";
@@ -357,32 +390,37 @@ function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: 
       window.scrollTo({ top:0, behavior:"smooth" });
     }
 
-    function filteredResources() {
+    function filteredResources(ignoreHealth) {
       let items = snapshot.resources.filter((item) => item.effective);
       if (detailFilter.ids?.length) items = snapshot.resources.filter((item) => detailFilter.ids.includes(item.id));
       if (detailFilter.owner) items = items.filter((item) => item.owner === detailFilter.owner);
       if (detailFilter.type) items = items.filter((item) => item.type === detailFilter.type);
+      if (!ignoreHealth && detailHealthFilter !== "all") items = items.filter((item) => item.health === detailHealthFilter);
       const query = detailSearch.value.trim().toLowerCase();
-      if (query) items = items.filter((item) => (item.name+" "+item.path+" "+item.reason).toLowerCase().includes(query));
+      if (query) items = items.filter((item) => (item.name+" "+item.path+" "+item.reason+" "+item.reasonEn).toLowerCase().includes(query));
       const rank = { warning:3, attention:2, healthy:1, inactive:0 };
       return items.sort((a,b) => rank[b.health] - rank[a.health] || a.name.localeCompare(b.name));
     }
 
     function renderDetail() {
-      const items = filteredResources();
+      const allItems = filteredResources(true);
+      const items = filteredResources(false);
       const issueTitle = language === "zh" ? detailFilter.titleZh : detailFilter.titleEn;
       const base = issueTitle || [detailFilter.owner ? ownerLabel(detailFilter.owner) : "", detailFilter.type ? typeLabel(detailFilter.type) : ""].filter(Boolean).join(" · ") || (language === "zh" ? "资源" : "Resources");
       document.getElementById("detailHeading").textContent = base;
       document.getElementById("detailSummary").textContent = language === "zh" ? items.length + " " + t("resourceSummary") : items.length + t("resourceSummary");
       const counts = { healthy:0, attention:0, warning:0, inactive:0 };
-      items.forEach((item) => counts[item.health] += 1);
-      document.getElementById("chips").innerHTML = Object.entries(counts).filter(([,count]) => count).map(([health,count]) => '<span class="chip">'+esc(healthLabel(health))+' '+count+'</span>').join("");
+      allItems.forEach((item) => counts[item.health] += 1);
+      const chips = document.getElementById("chips");
+      const total = Object.values(counts).reduce((sum,count) => sum + count, 0);
+      chips.innerHTML = '<button class="chip'+(detailHealthFilter === "all" ? ' active' : '')+'" data-health="all">'+esc(t("all"))+' '+total+'</button>' + Object.entries(counts).filter(([,count]) => count).map(([health,count]) => '<button class="chip'+(detailHealthFilter === health ? ' active' : '')+'" data-health="'+health+'">'+esc(healthLabel(health))+' '+count+'</button>').join("");
+      chips.querySelectorAll("[data-health]").forEach((button) => button.addEventListener("click", () => { detailHealthFilter = button.dataset.health; renderDetail(); }));
       const list = document.getElementById("resourceList");
       if (!items.length) { list.innerHTML = '<div class="empty">'+esc(t("emptyResources"))+'</div>'; return; }
       list.innerHTML = items.slice(0,300).map((item) => {
         const color = healthColors[item.health][0];
         const reason = language === "zh" ? item.reason : item.reasonEn;
-        return '<article class="resourceRow"><div class="resourceName"><strong>'+esc(item.name)+'</strong><span>'+esc(typeLabel(item.type))+' · '+esc(item.scope)+'</span></div><span class="badge" style="--badge:'+color+'"><i></i>'+esc(healthLabel(item.health))+'</span><div class="resourceReason">'+esc(reason)+'<br>'+esc(t("confidence"))+': '+esc(confidenceLabels[language][item.confidence] || item.confidence)+'</div><div class="resourcePath">'+esc(item.path)+'</div></article>';
+        return '<article class="resourceRow"><div class="resourceName"><strong>'+esc(item.name)+'</strong><span>'+esc(typeLabel(item.type))+'</span></div><span class="badge" style="--badge:'+color+'"><i></i>'+esc(healthLabel(item.health))+'</span><div class="resourceSource">'+esc(ownerLabel(item.owner))+'<br><span class="resourcePath">'+esc(item.scope)+'</span></div><div class="resourceReason">'+esc(reason)+'<br>'+esc(t("confidence"))+': '+esc(confidenceLabels[language][item.confidence] || item.confidence)+'</div><div class="resourcePath">'+esc(item.path)+'</div></article>';
       }).join("");
     }
 

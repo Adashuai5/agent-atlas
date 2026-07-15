@@ -46,6 +46,8 @@ export interface AtlasSnapshot {
   issues: Issue[];
   stats: {
     effective: number;
+    direct: number;
+    inherited: number;
     discovered: number;
     hiddenNoise: number;
     projects: number;
@@ -109,6 +111,7 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
   const project = projectPath ? { name: path.basename(projectPath), path: projectPath } : null;
   const duplicateIds = new Set<string>();
   const issues: Issue[] = [];
+  const duplicateIssueGroups: { name: string; type: AssetType; assets: Asset[] }[] = [];
 
   const activeCandidates = atlas.assets.filter((asset) => appliesToProject(asset, projectPath));
   const duplicateGroups = new Map<string, Asset[]>();
@@ -124,18 +127,23 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     if (uniquePaths.size < 2 || new Set(group.map((asset) => asset.owner)).size < 2) continue;
     group.forEach((asset) => duplicateIds.add(asset.id));
     const type = group[0].type;
+    duplicateIssueGroups.push({ name: group[0].name, type, assets: group });
+  }
+
+  if (duplicateIssueGroups.length) {
+    const names = duplicateIssueGroups.map((group) => group.name);
+    const assets = duplicateIssueGroups.flatMap((group) => group.assets);
     issues.push({
-      id: `duplicate:${key}`,
+      id: "duplicate-sources",
       severity: "attention",
-      title: `${group[0].name} 有 ${group.length} 个来源`,
-      titleEn: `${group[0].name} has ${group.length} sources`,
-      detail: `同名 ${type} 同时出现在 ${[...new Set(group.map((asset) => ownerLabels[asset.owner]))].join("、")}，尚未确认唯一来源。`,
-      detailEn: `The same ${type} exists in ${[...new Set(group.map((asset) => ownerLabels[asset.owner]))].join(", ")}; the canonical source is not confirmed.`,
-      action: "进入详情比较路径，并确认哪个副本是正式来源。",
-      actionEn: "Compare paths in the detail view and confirm the canonical copy.",
-      assetIds: group.map((asset) => asset.id),
-      type,
-      owner: group[0].owner
+      title: `${duplicateIssueGroups.length} 组资源存在跨系统来源`,
+      titleEn: `${duplicateIssueGroups.length} resource groups have cross-system sources`,
+      detail: `涉及 ${names.join("、")}；这些副本不一定冲突，但尚未确认唯一正式来源。`,
+      detailEn: `Includes ${names.join(", ")}. The copies may not conflict, but their canonical sources are unconfirmed.`,
+      action: "进入详情比较路径，并按使用频率确认正式来源。",
+      actionEn: "Compare paths in the detail view and confirm canonical sources by actual usage.",
+      assetIds: assets.map((asset) => asset.id),
+      type: duplicateIssueGroups.every((group) => group.type === "skill") ? "skill" : undefined
     });
   }
 
@@ -215,6 +223,9 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
   });
 
   const effectiveResources = resources.filter((resource) => resource.effective);
+  const directResources = effectiveResources.filter((resource) => resource.scope === "project");
+  const inheritedResources = effectiveResources.filter((resource) => resource.scope === "global");
+  const hasDirectProjectConfig = directResources.length > 0;
   const systems = (["codex", "claude", "agents", "hermes", "unknown"] as Owner[])
     .map((owner): SystemView => {
       const items = effectiveResources.filter((resource) => resource.owner === owner);
@@ -225,31 +236,44 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
         const direct = items.filter((item) => item.type === type && item.scope === "project").length;
         byTypeInfluence[type as AssetType] = Math.round(Math.sqrt(count ?? 0) * 5 + direct * 35);
       }
-      const influence = Object.values(byTypeInfluence).reduce((sum, value) => sum + (value ?? 0), 0);
+      const calculatedInfluence = Object.values(byTypeInfluence).reduce((sum, value) => sum + (value ?? 0), 0);
+      const influence = hasDirectProjectConfig ? calculatedInfluence : 1;
       return { owner, label: ownerLabels[owner], health: worstHealth(items.map((item) => item.health)), resources: items.length, byType, influence, byTypeInfluence };
     })
-    .filter((system) => system.resources > 0)
-    .sort((a, b) => b.influence - a.influence);
+    .filter((system) => system.resources > 0);
+  if (hasDirectProjectConfig) systems.sort((a, b) => b.influence - a.influence);
 
   const actionableIssues = issues.filter((issue) => issue.severity !== "info");
+  const issueCategoryEn = `${actionableIssues.length} source issue ${actionableIssues.length === 1 ? "category" : "categories"}`;
   const health: Health = actionableIssues.some((issue) => issue.severity === "warning") ? "warning" : actionableIssues.length ? "attention" : "healthy";
   const projectLabel = project ? `“${project.name}”` : "本机全局环境";
-  const title = health === "healthy" ? `${projectLabel}的 AI 环境状态清晰` : `${projectLabel}有 ${actionableIssues.length} 项需要确认`;
-  const scopeLabelEn = project ? `“${project.name}”` : "The global environment";
-  const titleEn = health === "healthy" ? `${scopeLabelEn} has a clear AI environment` : `${scopeLabelEn} has ${actionableIssues.length} items to review`;
+  const title = !project
+    ? `本机检测到 ${systems.length} 套 AI Agent 系统`
+    : !hasDirectProjectConfig
+      ? `${projectLabel}未发现项目级 AI 配置`
+      : `${projectLabel}有 ${directResources.length} 项直接配置`;
+  const titleEn = !project
+    ? `${systems.length} AI agent systems detected on this machine`
+    : !hasDirectProjectConfig
+      ? `No project-level AI configuration found for ${projectLabel}`
+      : `${projectLabel} has ${directResources.length} direct configuration items`;
   const directOwner = resources.find((resource) => resource.effective && resource.scope === "project")?.owner;
   const directSystem = directOwner ? systems.find((system) => system.owner === directOwner) : null;
-  const topSystem = systems[0];
+  const largestLibrary = systems.slice().sort((a, b) => b.resources - a.resources)[0];
   const detail = directSystem
-    ? `${directSystem.label} 提供当前项目的直接配置；${topSystem?.label ?? directSystem.label} 的整体影响权重最高。已折叠 ${hiddenNoise} 个缓存、源码和历史资产。`
-    : topSystem
-      ? `${topSystem.label} 的整体影响权重最高；已从默认视图折叠 ${hiddenNoise} 个缓存、源码和历史资产。`
-    : "没有识别到可用于当前范围的有效配置。";
+    ? `${directSystem.label} 提供项目直接配置，并继承 ${inheritedResources.length} 项全局资源；有 ${actionableIssues.length} 类来源问题待确认。`
+    : project
+      ? `当前仅继承 ${inheritedResources.length} 项全局资源；没有发现该项目专属的 Agent、Memory、Skill 或 MCP 配置。`
+      : largestLibrary
+        ? `${largestLibrary.label} 拥有最大的可用资源库，但是否实际启用仍属推定；有 ${actionableIssues.length} 类来源问题待确认。`
+        : "没有识别到可用于当前范围的配置。";
   const detailEn = directSystem
-    ? `${directSystem.label} provides direct project configuration; ${topSystem?.label ?? directSystem.label} has the highest overall influence. ${hiddenNoise} cache, source, and historical assets are folded.`
-    : topSystem
-      ? `${topSystem.label} has the highest overall influence; ${hiddenNoise} cache, source, and historical assets are folded.`
-      : "No effective configuration was identified for the current scope.";
+    ? `${directSystem.label} provides direct project configuration and inherits ${inheritedResources.length} global resources; ${issueCategoryEn} needs review.`
+    : project
+      ? `This project only inherits ${inheritedResources.length} global resources; no project-specific agent, memory, skill, or MCP configuration was found.`
+      : largestLibrary
+        ? `${largestLibrary.label} has the largest available resource library, but actual activation remains inferred; ${issueCategoryEn} needs review.`
+        : "No configuration was identified for the current scope.";
 
   return {
     generatedAt: atlas.generatedAt,
@@ -258,7 +282,7 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     systems,
     resources,
     issues,
-    stats: { effective: effectiveResources.length, discovered: atlas.assets.length, hiddenNoise, projects: atlas.projects.length }
+    stats: { effective: effectiveResources.length, direct: directResources.length, inherited: inheritedResources.length, discovered: atlas.assets.length, hiddenNoise, projects: atlas.projects.length }
   };
 }
 

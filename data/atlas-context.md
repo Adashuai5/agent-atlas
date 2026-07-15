@@ -1,30 +1,24 @@
 # Agent Atlas Context
 
-Generated: 2026-07-15T16:41:30.700Z
+Generated: 2026-07-15T16:53:25.380Z
 Project: Global environment
 Status: attention
 
 ## Current conclusion
 
-The global environment has 7 items to review
-Hermes has the highest overall influence; 2874 cache, source, and historical assets are folded.
+4 AI agent systems detected on this machine
+Hermes has the largest available resource library, but actual activation remains inferred; 1 source issue category needs review.
 
 ## Effective systems
 
-- Hermes: 124 resources; status attention; config 6, memory 2, skill 116
 - Codex: 15 resources; status attention; config 1, skill 14
 - Claude: 5 resources; status healthy; config 2, skill 2, memory 1
 - Shared Agents: 12 resources; status attention; skill 12
+- Hermes: 124 resources; status attention; config 6, memory 2, skill 116
 
 ## Issues and uncertainty
 
-- [attention] caveman has 3 sources: The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] caveman-commit has 3 sources: The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] caveman-compress has 3 sources: The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] caveman-help has 3 sources: The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] caveman-review has 3 sources: The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] code-review-expert has 2 sources: The same skill exists in Shared Agents, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
-- [attention] wiki-ingest has 2 sources: The same skill exists in Shared Agents, Hermes; the canonical source is not confirmed. Next: Compare paths in the detail view and confirm the canonical copy.
+- [attention] 7 resource groups have cross-system sources: Includes caveman, caveman-commit, caveman-compress, caveman-help, caveman-review, code-review-expert, wiki-ingest. The copies may not conflict, but their canonical sources are unconfirmed. Next: Compare paths in the detail view and confirm canonical sources by actual usage.
 
 ## Effective resources
 

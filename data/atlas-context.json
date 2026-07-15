@@ -1,31 +1,14 @@
 {
-  "generatedAt": "2026-07-15T16:41:30.700Z",
+  "generatedAt": "2026-07-15T16:53:25.380Z",
   "project": null,
   "conclusion": {
     "health": "attention",
-    "title": "本机全局环境有 7 项需要确认",
-    "titleEn": "The global environment has 7 items to review",
-    "detail": "Hermes 的整体影响权重最高；已从默认视图折叠 2874 个缓存、源码和历史资产。",
-    "detailEn": "Hermes has the highest overall influence; 2874 cache, source, and historical assets are folded."
+    "title": "本机检测到 4 套 AI Agent 系统",
+    "titleEn": "4 AI agent systems detected on this machine",
+    "detail": "Hermes 拥有最大的可用资源库，但是否实际启用仍属推定；有 1 类来源问题待确认。",
+    "detailEn": "Hermes has the largest available resource library, but actual activation remains inferred; 1 source issue category needs review."
   },
   "systems": [
-    {
-      "owner": "hermes",
-      "label": "Hermes",
-      "health": "attention",
-      "resources": 124,
-      "byType": {
-        "config": 6,
-        "memory": 2,
-        "skill": 116
-      },
-      "influence": 73,
-      "byTypeInfluence": {
-        "config": 12,
-        "memory": 7,
-        "skill": 54
-      }
-    },
     {
       "owner": "codex",
       "label": "Codex",
@@ -35,7 +18,7 @@
         "config": 1,
         "skill": 14
       },
-      "influence": 24,
+      "influence": 1,
       "byTypeInfluence": {
         "config": 5,
         "skill": 19
@@ -51,7 +34,7 @@
         "skill": 2,
         "memory": 1
       },
-      "influence": 19,
+      "influence": 1,
       "byTypeInfluence": {
         "config": 7,
         "skill": 7,
@@ -66,9 +49,26 @@
       "byType": {
         "skill": 12
       },
-      "influence": 17,
+      "influence": 1,
       "byTypeInfluence": {
         "skill": 17
+      }
+    },
+    {
+      "owner": "hermes",
+      "label": "Hermes",
+      "health": "attention",
+      "resources": 124,
+      "byType": {
+        "config": 6,
+        "memory": 2,
+        "skill": 116
+      },
+      "influence": 1,
+      "byTypeInfluence": {
+        "config": 12,
+        "memory": 7,
+        "skill": 54
       }
     }
   ],
@@ -2444,7 +2444,7 @@
       "scope": "global",
       "path": "/Users/ada/.codex",
       "projectPath": null,
-      "sizeBytes": 7033958064,
+      "sizeBytes": 7031893813,
       "modifiedAt": "2026-07-15T16:40:40.291Z",
       "signals": {
         "isDirectory": true,
@@ -47576,7 +47576,7 @@
       "scope": "global",
       "path": "/Users/ada/.codex/sessions",
       "projectPath": null,
-      "sizeBytes": 93190865,
+      "sizeBytes": 98271378,
       "modifiedAt": "2026-04-26T05:01:53.515Z",
       "signals": {
         "isDirectory": true,
@@ -65807,7 +65807,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/agent-atlas",
       "projectPath": "/Users/ada/Desktop/agent-atlas",
-      "sizeBytes": 9206789,
+      "sizeBytes": 4737795,
       "modifiedAt": "2026-07-14T08:24:39.279Z",
       "signals": {
         "isDirectory": true,
@@ -65853,7 +65853,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/quota-autopilot",
       "projectPath": "/Users/ada/Desktop/quota-autopilot",
-      "sizeBytes": 219334,
+      "sizeBytes": 228207,
       "modifiedAt": "2026-07-15T15:49:06.000Z",
       "signals": {
         "isDirectory": true,
@@ -65876,7 +65876,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 1501226,
+      "sizeBytes": 1500482,
       "modifiedAt": "2026-07-04T04:30:49.071Z",
       "signals": {
         "isDirectory": true,
@@ -65980,121 +65980,36 @@
   ],
   "issues": [
     {
-      "id": "duplicate:skill:caveman",
+      "id": "duplicate-sources",
       "severity": "attention",
-      "title": "caveman 有 3 个来源",
-      "titleEn": "caveman has 3 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Codex、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
+      "title": "7 组资源存在跨系统来源",
+      "titleEn": "7 resource groups have cross-system sources",
+      "detail": "涉及 caveman、caveman-commit、caveman-compress、caveman-help、caveman-review、code-review-expert、wiki-ingest；这些副本不一定冲突，但尚未确认唯一正式来源。",
+      "detailEn": "Includes caveman, caveman-commit, caveman-compress, caveman-help, caveman-review, code-review-expert, wiki-ingest. The copies may not conflict, but their canonical sources are unconfirmed.",
+      "action": "进入详情比较路径，并按使用频率确认正式来源。",
+      "actionEn": "Compare paths in the detail view and confirm canonical sources by actual usage.",
       "assetIds": [
         "36e8873e6a76f666",
         "fa112f2c3027d6ed",
-        "8f8744b33a035940"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:caveman-commit",
-      "severity": "attention",
-      "title": "caveman-commit 有 3 个来源",
-      "titleEn": "caveman-commit has 3 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Codex、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "8f8744b33a035940",
         "f34054e79bde46ec",
         "84daf34f2faadf13",
-        "aad5d9360e15cabb"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:caveman-compress",
-      "severity": "attention",
-      "title": "caveman-compress 有 3 个来源",
-      "titleEn": "caveman-compress has 3 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Codex、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "aad5d9360e15cabb",
         "c4569b971c24c581",
         "8953767ebeeb8dc7",
-        "fda12590a87a96c6"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:caveman-help",
-      "severity": "attention",
-      "title": "caveman-help 有 3 个来源",
-      "titleEn": "caveman-help has 3 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Codex、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "fda12590a87a96c6",
         "bddfa39eac325ac7",
         "e026fb980d3feea7",
-        "afc9fb411602355e"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:caveman-review",
-      "severity": "attention",
-      "title": "caveman-review 有 3 个来源",
-      "titleEn": "caveman-review has 3 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Codex、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Codex, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "afc9fb411602355e",
         "14b3f203733de509",
         "2bc4cd8f8216f5cb",
-        "b52163a90ec1983b"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:code-review-expert",
-      "severity": "attention",
-      "title": "code-review-expert 有 2 个来源",
-      "titleEn": "code-review-expert has 2 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "b52163a90ec1983b",
         "a453ed06366f3af5",
-        "5e5fe06955f52725"
-      ],
-      "type": "skill",
-      "owner": "agents"
-    },
-    {
-      "id": "duplicate:skill:wiki-ingest",
-      "severity": "attention",
-      "title": "wiki-ingest 有 2 个来源",
-      "titleEn": "wiki-ingest has 2 sources",
-      "detail": "同名 skill 同时出现在 Shared Agents、Hermes，尚未确认唯一来源。",
-      "detailEn": "The same skill exists in Shared Agents, Hermes; the canonical source is not confirmed.",
-      "action": "进入详情比较路径，并确认哪个副本是正式来源。",
-      "actionEn": "Compare paths in the detail view and confirm the canonical copy.",
-      "assetIds": [
+        "5e5fe06955f52725",
         "f590bbb8f1259877",
         "f67abf7d3dc624ef"
       ],
-      "type": "skill",
-      "owner": "agents"
+      "type": "skill"
     },
     {
       "id": "hidden-noise",
@@ -68985,6 +68900,8 @@
   ],
   "stats": {
     "effective": 156,
+    "direct": 0,
+    "inherited": 156,
     "discovered": 3036,
     "hiddenNoise": 2874,
     "projects": 4
