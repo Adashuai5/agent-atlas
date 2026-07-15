@@ -1,10 +1,10 @@
 # Agent Atlas
 
-Local, read-only map for AI agent assets on this machine.
+Local, read-only health check and context snapshot for AI agent environments.
 
-Agent Atlas scans common local AI configuration locations, writes a structured
-`data/atlas.json`, and generates a static `data/atlas.html` summary that can be
-opened directly in a browser.
+Agent Atlas scans common local AI configuration locations, evaluates which
+resources matter to the current project, flags uncertainty and duplicate
+sources, and renders the same semantic snapshot for people and AI agents.
 
 ## Scope
 
@@ -13,8 +13,10 @@ MVP does:
 - read-only local scanning
 - global and Desktop project discovery
 - skill, memory, MCP, agent, config, session, and project classification
-- stable JSON output
-- static HTML overview
+- semantic health snapshot with evidence and confidence
+- answer-first static HTML with status heatmap and drill-down lists
+- compact Markdown context for AI agents
+- structured JSON for tools and integrations
 
 MVP does not:
 
@@ -48,7 +50,13 @@ directly.
 Outputs:
 
 - `data/atlas.json`
+- `data/atlas-context.json`
+- `data/atlas-context.md`
 - `data/atlas.html`
+
+Open `data/atlas.html` for the human view. Ask an AI agent to read
+`data/atlas-context.md` for the compact, project-scoped context. File-derived
+text is treated as data rather than executable instructions.
 
 ## Scan Roots
 

@@ -1,523 +1,437 @@
 import fs from "node:fs/promises";
-import type { Asset } from "./classify.ts";
 import type { Atlas } from "./scan.ts";
-import { atlasHtmlPath, atlasJsonPath, dataDir } from "./paths.ts";
-
-interface TileNode {
-  id: string;
-  label: string;
-  value: number;
-  colorKey: string;
-  scopeKey: string;
-  meta: string;
-  assets: Asset[];
-}
-
-interface Rect extends TileNode {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+import { buildSnapshot, renderContextMarkdown } from "./diagnose.ts";
+import { atlasContextJsonPath, atlasContextMarkdownPath, atlasHtmlPath, atlasJsonPath, dataDir } from "./paths.ts";
 
 export async function writeAtlas(atlas: Atlas): Promise<void> {
+  const snapshot = buildSnapshot(atlas, null);
+  const projectPaths = [...new Set(atlas.projects.map((project) => project.projectPath ?? project.path))];
+  const scopeSnapshots = [snapshot, ...projectPaths.map((projectPath) => buildSnapshot(atlas, projectPath))];
   await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(atlasJsonPath, `${JSON.stringify(atlas, null, 2)}\n`, "utf8");
-  await fs.writeFile(atlasHtmlPath, renderHtml(atlas), "utf8");
+  await Promise.all([
+    fs.writeFile(atlasJsonPath, `${JSON.stringify(atlas, null, 2)}\n`, "utf8"),
+    fs.writeFile(atlasContextJsonPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8"),
+    fs.writeFile(atlasContextMarkdownPath, renderContextMarkdown(snapshot), "utf8"),
+    fs.writeFile(atlasHtmlPath, renderHtml(snapshot, scopeSnapshots), "utf8")
+  ]);
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => {
-    switch (char) {
-      case "&":
-        return "&amp;";
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case "\"":
-        return "&quot;";
-      default:
-        return "&#39;";
-    }
-  });
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char]!);
 }
 
-function topEntry(counts: Record<string, number>): [string, number] {
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["unknown", 0];
-}
-
-function clusterNodes(assets: Asset[]): TileNode[] {
-  const groups = new Map<string, Asset[]>();
-  for (const asset of assets) {
-    const key = `${asset.owner}|${asset.scope}|${asset.type}`;
-    const group = groups.get(key) ?? [];
-    group.push(asset);
-    groups.set(key, group);
-  }
-  return [...groups.entries()].map(([key, items]) => {
-    const [owner, scope, type] = key.split("|");
-    return {
-      id: key,
-      label: `${scope} / ${owner} / ${type}`,
-      value: items.length,
-      colorKey: owner,
-      scopeKey: scope,
-      meta: "点击下钻",
-      assets: items
-    };
-  }).sort((a, b) => b.value - a.value);
-}
-
-function scopeNodes(assets: Asset[]): TileNode[] {
-  const groups = new Map<string, Asset[]>();
-  for (const asset of assets) {
-    const group = groups.get(asset.scope) ?? [];
-    group.push(asset);
-    groups.set(asset.scope, group);
-  }
-  return [...groups.entries()].map(([scope, items]) => ({
-    id: scope,
-    label: scope,
-    value: items.length,
-    colorKey: scope,
-    scopeKey: scope,
-    meta: "点击看系统",
-    assets: items
-  })).sort((a, b) => b.value - a.value);
-}
-
-function treemap(nodes: TileNode[], x: number, y: number, w: number, h: number): Rect[] {
-  if (nodes.length === 0) return [];
-  if (nodes.length === 1) return [{ ...nodes[0], x, y, w, h }];
-  const total = nodes.reduce((sum, node) => sum + node.value, 0);
-  const half = total / 2;
-  let running = nodes[0].value;
-  let splitCount = 1;
-  while (splitCount < nodes.length - 1 && running + nodes[splitCount].value <= half) {
-    running += nodes[splitCount].value;
-    splitCount += 1;
-  }
-  const a = nodes.slice(0, splitCount);
-  const b = nodes.slice(splitCount);
-  const aTotal = a.reduce((sum, node) => sum + node.value, 0);
-  const ratio = total > 0 ? aTotal / total : 0.5;
-  if (w >= h) {
-    const aw = w * ratio;
-    return [...treemap(a, x, y, aw, h), ...treemap(b, x + aw, y, w - aw, h)];
-  }
-  const ah = h * ratio;
-  return [...treemap(a, x, y, w, ah), ...treemap(b, x, y + ah, w, h - ah)];
-}
-
-function color(key: string): string {
-  const colors: Record<string, string> = {
-    codex: "#109182",
-    hermes: "#7048e8",
-    claude: "#c16620",
-    agents: "#2f6eea",
-    unknown: "#65758b",
-    global: "#109182",
-    plugin: "#7048e8",
-    cache: "#7048e8",
-    project: "#c16620",
-    skill: "#16a34a",
-    agent: "#2f6eea",
-    config: "#64748b",
-    memory: "#be123c",
-    mcp: "#c16620",
-    session: "#65758b"
-  };
-  return colors[key] ?? colors.unknown;
-}
-
-function pct(value: number, total: number): string {
-  return total ? `${Math.round((value / total) * 100)}%` : "0%";
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
-}
-
-function renderStaticTile(rect: Rect, total: number): string {
-  const compact = rect.w * rect.h < 220 ? " compact" : "";
-  const tiny = rect.w * rect.h < 80 ? " tiny" : "";
-  return `<button class="tile${compact}${tiny}" style="left:${rect.x}%;top:${rect.y}%;width:${rect.w}%;height:${rect.h}%;--c:${color(rect.colorKey)};--s:${color(rect.scopeKey)}">
-    <span class="tile-label">${escapeHtml(rect.label)}</span>
-    <span class="tile-meta">${escapeHtml(rect.meta)}</span>
-    <strong>${rect.value}</strong>
-    <em>${pct(rect.value, total)}</em>
-  </button>`;
-}
-
-function renderHtml(atlas: Atlas): string {
-  const [topOwner, topOwnerCount] = topEntry(atlas.summary.byOwner);
-  const [topType, topTypeCount] = topEntry(atlas.summary.byType);
-  const [topScope, topScopeCount] = topEntry(atlas.summary.byScope);
-  const initialRects = treemap(scopeNodes(atlas.assets), 0, 0, 100, 100);
-  const staticTiles = initialRects.map((rect) => renderStaticTile(rect, atlas.summary.assetCount)).join("");
-  const data = JSON.stringify(atlas.assets.map((asset) => ({
-    id: asset.id,
-    name: asset.name,
-    type: asset.type,
-    owner: asset.owner,
-    scope: asset.scope,
-    path: asset.path,
-    projectPath: asset.projectPath,
-    sizeBytes: asset.sizeBytes,
-    modifiedAt: asset.modifiedAt
-  }))).replace(/</g, "\\u003c");
+function renderHtml(snapshot: ReturnType<typeof buildSnapshot>, scopeSnapshots: ReturnType<typeof buildSnapshot>[]): string {
+  const data = JSON.stringify(snapshot).replace(/</g, "\\u003c");
+  const scopesData = JSON.stringify(scopeSnapshots).replace(/</g, "\\u003c");
+  const contextsData = JSON.stringify(scopeSnapshots.map((scope) => ({ zh: renderContextMarkdown(scope, "zh"), en: renderContextMarkdown(scope, "en") }))).replace(/</g, "\\u003c");
+  const actionableIssues = snapshot.issues.filter((issue) => issue.severity !== "info").length;
+  const projectLabel = snapshot.project?.name ?? "本机全局环境";
+  const generated = snapshot.generatedAt.slice(0, 16).replace("T", " ");
 
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Atlas</title>
+  <title>Agent Atlas · ${escapeHtml(projectLabel)}</title>
   <style>
-    :root { --bg:#101826; --panel:#f8fafc; --ink:#152033; --muted:#617083; --line:rgba(255,255,255,.18); }
-    * { box-sizing: border-box; }
-    body { margin:0; height:100vh; overflow:hidden; background:var(--bg); color:var(--ink); font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    button, input, select { font:inherit; }
+    :root {
+      --canvas:#eef1f5; --surface:#fff; --ink:#142033; --muted:#68758a; --line:#dce2ea;
+      --healthy:#12825f; --healthy-2:#075c46; --attention:#d58b16; --attention-2:#9a5a08;
+      --warning:#c7483b; --warning-2:#8f2d27; --inactive:#718096; --inactive-2:#48566a;
+      --shadow:0 16px 42px rgba(25,39,61,.09);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--canvas); color:var(--ink); font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input { font:inherit; }
     button { cursor:pointer; }
-    .topbar { height:96px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; padding:12px 16px; background:var(--panel); border-bottom:1px solid rgba(15,23,42,.14); }
-    h1 { margin:0; font-size:21px; line-height:1.12; letter-spacing:0; }
-    .answer { margin:6px 0 0; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .controls { display:grid; grid-template-columns:210px repeat(6,auto); gap:8px; align-items:center; overflow-x:auto; max-width:100%; padding-bottom:2px; }
-    .controls input, .controls select, .controls button { min-height:34px; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:#fff; color:var(--ink); padding:0 10px; }
-    .controls button.active { background:#152033; color:#fff; border-color:#152033; }
-    .heatmap { position:relative; height:calc(100vh - 96px); padding:8px; background:#101826; display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:8px; }
-    .crumbs { position:absolute; z-index:8; left:18px; top:18px; display:flex; gap:6px; flex-wrap:wrap; max-width:calc(100vw - 420px); }
-    .crumbs button { min-height:30px; border:1px solid rgba(255,255,255,.38); border-radius:999px; background:rgba(248,250,252,.9); color:#152033; padding:0 10px; box-shadow:0 8px 28px rgba(0,0,0,.14); }
-    .board { position:relative; width:100%; height:100%; overflow:hidden; border-radius:8px; background:#0f172a; box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); }
-    .tile { position:absolute; overflow:hidden; border:2px solid #101826; border-radius:7px; color:white; text-align:left; padding:10px; background:radial-gradient(circle at 74% 18%,rgba(255,255,255,.18),transparent 32%),linear-gradient(135deg,var(--c),#172033); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); transition:filter .12s ease,transform .12s ease,border-color .12s ease; }
-    .tile::before { content:""; position:absolute; left:0; top:0; width:100%; height:5px; background:var(--s); box-shadow:0 1px 0 rgba(255,255,255,.22); }
-    .tile:hover { z-index:5; filter:brightness(1.08); transform:translateY(-1px); border-color:rgba(255,255,255,.82); }
-    .tile-label { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:850; font-size:clamp(11px,1.55vw,24px); text-shadow:0 1px 2px rgba(0,0,0,.28); }
-    .tile-meta { display:block; margin-top:4px; color:rgba(255,255,255,.78); font-size:12px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .tile strong { position:absolute; left:10px; bottom:7px; font-size:clamp(18px,3.2vw,58px); line-height:.9; letter-spacing:0; text-shadow:0 1px 2px rgba(0,0,0,.24); }
-    .tile em { position:absolute; right:10px; bottom:9px; font-style:normal; color:rgba(255,255,255,.82); font-size:12px; }
+    .app { width:min(1500px,100%); margin:0 auto; padding:18px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:14px; }
+    .brand { display:flex; align-items:center; gap:11px; min-width:0; }
+    .mark { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:#142033; color:#fff; font-weight:900; letter-spacing:-1px; }
+    h1 { margin:0; font-size:18px; line-height:1.15; }
+    .context { margin:3px 0 0; color:var(--muted); }
+    .scopeControls { display:flex; align-items:center; gap:6px; margin-top:3px; }
+    .scopeSelect { max-width:240px; height:30px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:0 8px; }
+    .scopeSelect[hidden] { display:none; }
+    .meta { color:var(--muted); font-size:12px; text-align:right; }
+    .metaControls { display:flex; justify-content:flex-end; align-items:center; gap:9px; margin-top:3px; }
+    .aiButton,.langButton { border:0; background:transparent; color:#315e9a; padding:0; }
+    .langButton { color:#526178; }
+    .hero { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:22px; align-items:center; padding:22px 24px; border-radius:16px; background:#142033; color:#fff; box-shadow:var(--shadow); }
+    .eyebrow { display:flex; align-items:center; gap:8px; color:rgba(255,255,255,.68); font-size:12px; font-weight:700; letter-spacing:.04em; }
+    .statusDot { width:9px; height:9px; border-radius:50%; background:var(--status); box-shadow:0 0 0 4px color-mix(in srgb,var(--status),transparent 78%); }
+    .hero h2 { margin:8px 0 0; max-width:850px; font-size:clamp(22px,3vw,38px); line-height:1.08; letter-spacing:-.035em; }
+    .hero p { margin:9px 0 0; max-width:820px; color:rgba(255,255,255,.72); font-size:15px; }
+    .heroStats { display:flex; gap:10px; }
+    .heroStat { min-width:96px; padding:12px 14px; border:1px solid rgba(255,255,255,.15); border-radius:12px; background:rgba(255,255,255,.06); }
+    .heroStat span { display:block; color:rgba(255,255,255,.62); font-size:11px; }
+    .heroStat strong { display:block; margin-top:3px; font-size:24px; line-height:1; }
+    .overview { display:grid; grid-template-columns:minmax(0,2.2fr) minmax(280px,.8fr); gap:14px; margin-top:14px; }
+    .panel { min-width:0; border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden; }
+    .panelHead { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:17px 18px 13px; border-bottom:1px solid var(--line); }
+    .panelHead h3 { margin:0; font-size:17px; }
+    .panelHead p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .legend { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; color:var(--muted); font-size:11px; }
+    .legend span { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+    .legend i { width:8px; height:8px; border-radius:50%; background:var(--dot); }
+    .mapBoard { height:clamp(440px,61vh,700px); display:flex; gap:5px; padding:6px; background:#111a2a; overflow:auto; }
+    .systemGroup { position:relative; flex-basis:0; min-width:110px; border:1px solid rgba(255,255,255,.18); border-radius:8px; overflow:hidden; background:#1d293c; }
+    .systemHead { position:absolute; z-index:3; left:0; right:0; top:0; height:38px; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:0 10px; border:0; border-bottom:1px solid rgba(255,255,255,.18); background:rgba(10,17,29,.9); color:#fff; text-align:left; }
+    .systemHead strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .systemHead span { width:8px; height:8px; flex:0 0 auto; border-radius:50%; background:var(--status); }
+    .systemTiles { position:absolute; left:0; right:0; top:38px; bottom:0; }
+    .tile { position:absolute; overflow:hidden; border:2px solid #111a2a; border-radius:5px; padding:10px; color:#fff; text-align:left; background:linear-gradient(145deg,var(--tile),var(--tile-dark)); transition:filter .12s ease,transform .12s ease; }
+    .tile:hover,.tile:focus-visible { z-index:4; filter:brightness(1.12); transform:translateY(-1px); outline:2px solid rgba(255,255,255,.9); outline-offset:-3px; }
+    .tileLabel { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(12px,1.35vw,21px); font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.25); }
+    .tileState { display:block; margin-top:4px; color:rgba(255,255,255,.78); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .tile.compact { padding:7px; }
-    .tile.compact .tile-meta { display:none; }
-    .tile.compact .tile-label { font-size:14px; }
-    .tile.compact strong { font-size:clamp(14px,2vw,28px); left:7px; bottom:6px; }
-    .tile.asset .tile-meta { display:none; }
-    .tile.asset .tile-label { font-size:clamp(11px,1.05vw,18px); }
-    .tile.asset strong { font-size:clamp(17px,2.15vw,40px); }
+    .tile.compact .tileLabel { font-size:12px; }
+    .tile.compact .tileState { display:none; }
     .tile.tiny { padding:0; }
-    .tile.tiny .tile-label, .tile.tiny .tile-meta, .tile.tiny strong, .tile.tiny em { display:none; }
-    .detail { min-width:0; height:100%; overflow:auto; border:1px solid rgba(15,23,42,.18); border-radius:8px; background:rgba(248,250,252,.97); box-shadow:0 18px 50px rgba(0,0,0,.22); padding:16px; }
-    .detail h2 { margin:0 0 4px; font-size:20px; letter-spacing:0; }
-    .detail p { margin:0 0 12px; color:var(--muted); }
-    .detail ol { margin:0; padding-left:20px; }
-    .detail li { margin:7px 0; overflow-wrap:anywhere; }
-    .detail .muted { color:var(--muted); }
-    .detail .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
-    .detail .stat { border:1px solid rgba(15,23,42,.12); border-radius:8px; padding:8px; background:#fff; }
-    .detail .stat strong { display:block; font-size:20px; line-height:1.1; }
-    .en [data-zh] { display:none; }
-    body:not(.en) [data-en] { display:none; }
-    @media (max-width:900px) { .topbar { height:170px; grid-template-columns:1fr; align-items:start; } .controls { display:flex; overflow-x:auto; } .controls input { flex:0 0 210px; } .controls select, .controls button { flex:0 0 auto; min-width:82px; } .answer { white-space:normal; } .heatmap { height:calc(100vh - 170px); padding:5px; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) 220px; } .crumbs { max-width:calc(100vw - 36px); } .detail { padding:12px; } .detail h2 { font-size:17px; } .detail ol { padding-left:18px; } }
+    .tile.tiny .tileLabel,.tile.tiny .tileState { display:none; }
+    .issuesPanel { display:grid; grid-template-rows:auto minmax(0,1fr); }
+    .issueList { overflow:auto; padding:8px; }
+    .issue { width:100%; display:block; margin-bottom:7px; padding:12px; border:1px solid var(--line); border-left:4px solid var(--issue); border-radius:10px; background:#fff; color:var(--ink); text-align:left; }
+    .issue:hover { background:#f7f9fc; }
+    .issue strong { display:block; font-size:13px; }
+    .issue p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+    .issue .next { color:#405570; }
+    .quiet { padding:22px; color:var(--muted); text-align:center; }
+    .detailView { display:none; margin-top:14px; }
+    .detailView.open { display:block; }
+    .back { border:0; background:transparent; color:#315e9a; padding:0; }
+    .detailTop { padding:18px; border-bottom:1px solid var(--line); }
+    .detailTitle { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-top:12px; }
+    .detailTitle h2 { margin:0; font-size:28px; letter-spacing:-.025em; }
+    .detailTitle p { margin:4px 0 0; color:var(--muted); }
+    .search { width:min(330px,100%); height:38px; border:1px solid var(--line); border-radius:9px; padding:0 11px; background:#f8fafc; color:var(--ink); }
+    .chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
+    .chip { border:1px solid var(--line); border-radius:999px; background:#fff; color:#4f5e73; padding:5px 9px; font-size:12px; }
+    .resourceList { padding:6px 18px 18px; }
+    .resourceRow { display:grid; grid-template-columns:minmax(180px,1.1fr) 130px 130px minmax(220px,1.5fr); gap:14px; align-items:start; padding:13px 0; border-bottom:1px solid var(--line); }
+    .resourceRow:last-child { border-bottom:0; }
+    .resourceName strong { display:block; overflow-wrap:anywhere; }
+    .resourceName span,.resourcePath,.resourceReason { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+    .badge { display:inline-flex; align-items:center; gap:6px; width:max-content; padding:4px 8px; border-radius:999px; background:color-mix(in srgb,var(--badge),white 87%); color:color-mix(in srgb,var(--badge),black 20%); font-size:11px; font-weight:700; }
+    .badge i { width:7px; height:7px; border-radius:50%; background:var(--badge); }
+    .empty { padding:35px; color:var(--muted); text-align:center; }
+    .modal { position:fixed; z-index:50; inset:0; display:none; place-items:center; padding:20px; background:rgba(9,17,29,.62); }
+    .modal.open { display:grid; }
+    .modalCard { width:min(880px,100%); max-height:min(820px,92vh); display:grid; grid-template-rows:auto minmax(0,1fr); border-radius:15px; background:#fff; box-shadow:0 30px 90px rgba(0,0,0,.3); overflow:hidden; }
+    .modalHead { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .modalHead h3 { margin:0; }
+    .modalActions { display:flex; gap:7px; }
+    .modalActions button { min-height:34px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:0 10px; }
+    .modalActions button.primary { background:#142033; border-color:#142033; color:#fff; }
+    .aiContext { margin:0; padding:18px; overflow:auto; background:#f7f9fc; color:#25334a; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+    @media (max-width:900px) {
+      .app { padding:10px; }
+      .topbar { align-items:flex-start; }
+      .meta { font-size:0; }
+      .metaControls,.aiButton,.langButton { font-size:12px; }
+      .hero { grid-template-columns:1fr; padding:18px; }
+      .heroStats { overflow-x:auto; }
+      .heroStat { min-width:88px; }
+      .overview { grid-template-columns:1fr; }
+      .mapBoard { height:500px; }
+      .systemGroup { min-width:145px; }
+      .issuesPanel { max-height:360px; }
+      .detailTitle { display:block; }
+      .search { margin-top:13px; }
+      .resourceRow { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; }
+      .resourceReason,.resourcePath { grid-column:1 / -1; }
+    }
+    @media (max-width:520px) {
+      .scopeControls { max-width:285px; }
+      .scopeSelect { min-width:0; max-width:180px; }
+      .hero h2 { font-size:24px; }
+      .heroStats { gap:7px; }
+      .heroStat { padding:10px; }
+      .panelHead { display:block; }
+      .legend { justify-content:flex-start; margin-top:10px; }
+      .mapBoard { height:430px; }
+      .systemGroup { min-width:130px; }
+    }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1><span data-zh>本机 AI 资产热力图</span><span data-en>Local AI Asset Heatmap</span></h1>
-      <p id="answer" class="answer">
-        <span data-zh>${atlas.summary.assetCount} 个资产 · 主要集中在 ${escapeHtml(topScope)} ${topScopeCount} · 最大系统 ${escapeHtml(topOwner)} ${topOwnerCount} · 最大类型 ${escapeHtml(topType)} ${topTypeCount}</span>
-        <span data-en>${atlas.summary.assetCount} assets · top scope ${escapeHtml(topScope)} ${topScopeCount} · top owner ${escapeHtml(topOwner)} ${topOwnerCount} · top type ${escapeHtml(topType)} ${topTypeCount}</span>
-      </p>
-    </div>
-    <div class="controls">
-      <input id="search" type="search" placeholder="搜索名称或路径">
-      <select id="scopeFilter"><option value="">全部作用域</option></select>
-      <select id="ownerFilter"><option value="">全部系统</option></select>
-      <select id="typeFilter"><option value="">全部类型</option></select>
-      <button data-metric="count" class="active">数量</button>
-      <button data-metric="size">体积</button>
-      <button id="lang"><span data-zh>English</span><span data-en>中文</span></button>
-    </div>
-  </header>
-  <main class="heatmap">
-    <nav id="crumbs" class="crumbs"></nav>
-    <section id="board" class="board">${staticTiles}</section>
-    <aside id="detail" class="detail">
-      <h2>资产详情</h2>
-      <p class="muted">悬停或点击区块查看路径、体积和修改时间。</p>
-    </aside>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">A</div>
+        <div><h1>Agent Atlas</h1><div class="scopeControls"><select id="scopeMode" class="scopeSelect" aria-label="范围类型"><option value="global">本机全局</option><option value="project">项目</option></select><select id="projectSelect" class="scopeSelect" aria-label="具体项目" hidden>${scopeSnapshots.slice(1).map((scope, index) => `<option value="${index + 1}">${escapeHtml(scope.project?.name ?? "Project")}</option>`).join("")}</select></div></div>
+      </div>
+      <div class="meta"><span data-i18n="lastScan">最后扫描</span> ${escapeHtml(generated)}<div class="metaControls"><button id="showAiContext" class="aiButton" data-i18n="aiContext">给 AI 的上下文 ↗</button><button id="langToggle" class="langButton">中 / EN</button></div></div>
+    </header>
+
+    <section id="hero" class="hero" style="--status:var(--${snapshot.conclusion.health})">
+      <div>
+        <div class="eyebrow"><i class="statusDot"></i><span data-i18n="currentConclusion">当前结论</span></div>
+        <h2 id="conclusionTitle">${escapeHtml(snapshot.conclusion.title)}</h2>
+        <p id="conclusionDetail">${escapeHtml(snapshot.conclusion.detail)}</p>
+      </div>
+      <div class="heroStats">
+        <div class="heroStat"><span data-i18n="effective">实际相关</span><strong id="effectiveCount">${snapshot.stats.effective}</strong></div>
+        <div class="heroStat"><span data-i18n="review">需要确认</span><strong id="issueCount">${actionableIssues}</strong></div>
+        <div class="heroStat"><span data-i18n="folded">已折叠噪声</span><strong id="noiseCount">${snapshot.stats.hiddenNoise}</strong></div>
+      </div>
+    </section>
+
+    <section id="overview" class="overview">
+      <article class="panel">
+        <header class="panelHead">
+          <div><h3 data-i18n="systemStatus">当前系统状态</h3><p data-i18n="mapHelp">面积表示影响权重，颜色表示健康状态；点击进入详情。</p></div>
+          <div class="legend">
+            <span><i style="--dot:var(--healthy)"></i><b data-i18n="healthy">正常</b></span>
+            <span><i style="--dot:var(--attention)"></i><b data-i18n="attention">待确认</b></span>
+            <span><i style="--dot:var(--warning)"></i><b data-i18n="warning">冲突</b></span>
+            <span><i style="--dot:var(--inactive)"></i><b data-i18n="inactive">未启用</b></span>
+          </div>
+        </header>
+        <div id="mapBoard" class="mapBoard"></div>
+      </article>
+      <aside class="panel issuesPanel">
+        <header class="panelHead"><div><h3 data-i18n="needsAction">需要处理</h3><p data-i18n="issueHelp">只显示会影响判断的高信号问题。</p></div></header>
+        <div id="issueList" class="issueList"></div>
+      </aside>
+    </section>
+
+    <section id="detailView" class="panel detailView">
+      <div class="detailTop">
+        <button id="back" class="back" data-i18n="back">← 返回系统总览</button>
+        <div class="detailTitle">
+          <div><h2 id="detailHeading">资源</h2><p id="detailSummary"></p></div>
+          <input id="detailSearch" class="search" type="search" placeholder="搜索名称或路径">
+        </div>
+        <div id="chips" class="chips"></div>
+      </div>
+      <div id="resourceList" class="resourceList"></div>
+    </section>
+
+    <section id="aiModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
+      <div class="modalCard">
+        <header class="modalHead"><h3 id="aiModalTitle" data-i18n="aiModalTitle">给 AI 的当前上下文</h3><div class="modalActions"><button id="copyAiContext" class="primary" data-i18n="copyMarkdown">复制 Markdown</button><button id="closeAiContext" data-i18n="close">关闭</button></div></header>
+        <pre id="aiContext" class="aiContext"></pre>
+      </div>
+    </section>
   </main>
-  <script id="asset-data" type="application/json">${data}</script>
+
   <script>
-    const allAssets = JSON.parse(document.getElementById("asset-data").textContent);
-    const board = document.getElementById("board");
-    const detail = document.getElementById("detail");
-    const search = document.getElementById("search");
-    const crumbs = document.getElementById("crumbs");
-    const scopeFilter = document.getElementById("scopeFilter");
-    const ownerFilter = document.getElementById("ownerFilter");
-    const typeFilter = document.getElementById("typeFilter");
-    const metricButtons = Array.prototype.slice.call(document.querySelectorAll("[data-metric]"));
-    let metric = "count";
-    let stack = [{ label: "全部", assets: allAssets, level: "scope" }];
+    const initialSnapshot = ${data};
+    const scopeSnapshots = ${scopesData};
+    const scopeContexts = ${contextsData};
+    let snapshot = scopeSnapshots[0] || initialSnapshot;
+    const overview = document.getElementById("overview");
+    const detailView = document.getElementById("detailView");
+    const mapBoard = document.getElementById("mapBoard");
+    const issueList = document.getElementById("issueList");
+    const detailSearch = document.getElementById("detailSearch");
+    const translations = {
+      zh:{ lastScan:"最后扫描",aiContext:"给 AI 的上下文 ↗",currentConclusion:"当前结论",effective:"实际相关",review:"需要确认",folded:"已折叠噪声",systemStatus:"当前系统状态",mapHelp:"面积表示影响权重，颜色表示健康状态；点击进入详情。",healthy:"正常",attention:"待确认",warning:"冲突",inactive:"未启用",needsAction:"需要处理",issueHelp:"只显示会影响判断的高信号问题。",back:"← 返回系统总览",aiModalTitle:"给 AI 的当前上下文",copyMarkdown:"复制 Markdown",close:"关闭",next:"建议",scopeProject:"当前项目",scopeGlobal:"本机全局",search:"搜索名称或路径",emptyIssues:"当前没有需要处理的问题。",emptyResources:"没有匹配资源",resourceSummary:"个匹配资源；列表优先显示冲突和待确认项。",confidence:"置信度",copied:"已复制" },
+      en:{ lastScan:"Last scan",aiContext:"AI context ↗",currentConclusion:"Current conclusion",effective:"Effective",review:"Review",folded:"Folded noise",systemStatus:"Current system status",mapHelp:"Area shows influence; color shows health. Click for details.",healthy:"Healthy",attention:"Review",warning:"Conflict",inactive:"Inactive",needsAction:"Needs action",issueHelp:"Only high-signal issues that affect interpretation.",back:"← Back to system overview",aiModalTitle:"Current context for AI",copyMarkdown:"Copy Markdown",close:"Close",next:"Next",scopeProject:"Current project",scopeGlobal:"Global machine",search:"Search name or path",emptyIssues:"No actionable issue in this scope.",emptyResources:"No matching resources",resourceSummary:" matching resources; conflicts and uncertain items appear first.",confidence:"Confidence",copied:"Copied" }
+    };
+    const typeLabelsByLang = {
+      zh:{ skill:"技能",memory:"记忆",mcp:"MCP",agent:"Agent",config:"配置",project:"项目",session:"会话" },
+      en:{ skill:"Skills",memory:"Memory",mcp:"MCP",agent:"Agents",config:"Config",project:"Project",session:"Sessions" }
+    };
+    const healthLabelsByLang = {
+      zh:{ healthy:"状态正常",attention:"需要确认",warning:"存在冲突",inactive:"未启用" },
+      en:{ healthy:"Healthy",attention:"Needs review",warning:"Conflict",inactive:"Inactive" }
+    };
+    const confidenceLabels = { zh:{confirmed:"已确认",inferred:"推定",unknown:"未知"}, en:{confirmed:"Confirmed",inferred:"Inferred",unknown:"Unknown"} };
+    const healthColors = {
+      healthy:["#138965","#075c46"], attention:["#de961d","#965608"],
+      warning:["#cf4c40","#8b2c27"], inactive:["#718096","#455267"]
+    };
+    let detailFilter = null;
+    let language = "zh";
 
-    const colors = { codex:"#109182", hermes:"#7048e8", claude:"#c16620", agents:"#2f6eea", unknown:"#65758b", global:"#109182", plugin:"#7048e8", cache:"#8b5cf6", project:"#c16620", skill:"#16a34a", agent:"#2f6eea", config:"#64748b", memory:"#be123c", mcp:"#c16620", session:"#65758b" };
-    const MAX_LEAF_TILES = 80;
-    const LEVELS = ["scope", "owner", "source", "type", "assets"];
+    function t(key) { return translations[language][key] || key; }
+    function healthLabel(health) { return healthLabelsByLang[language][health] || health; }
+    function typeLabel(type) { return typeLabelsByLang[language][type] || type; }
 
-    function group(items, keyFn) {
-      const out = new Map();
-      items.forEach((asset) => {
-        const key = keyFn(asset) || "unknown";
-        if (!out.has(key)) out.set(key, []);
-        out.get(key).push(asset);
-      });
-      return out;
+    function applyLanguage() {
+      document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+      document.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
+      detailSearch.placeholder = t("search");
+      const scopeMode = document.getElementById("scopeMode");
+      const selectedMode = scopeMode.value || "global";
+      scopeMode.innerHTML = '<option value="global">'+esc(t("scopeGlobal"))+'</option><option value="project"'+(scopeSnapshots.length < 2 ? ' disabled' : '')+'>'+esc(t("scopeProject"))+'</option>';
+      scopeMode.value = selectedMode;
+      const projectSelect = document.getElementById("projectSelect");
+      const selectedProject = projectSelect.value || "1";
+      projectSelect.innerHTML = scopeSnapshots.slice(1).map((scope,index) => '<option value="'+(index+1)+'">'+esc(scope.project?.name || "Project")+'</option>').join("");
+      if (scopeSnapshots.length > 1) projectSelect.value = selectedProject;
     }
 
-    function setupFilters() {
-      fillFilter(scopeFilter, unique(allAssets.map((asset) => asset.scope)));
-      fillFilter(ownerFilter, unique(allAssets.map((asset) => asset.owner)));
-      fillFilter(typeFilter, unique(allAssets.map((asset) => asset.type)));
+    function currentScopeIndex() {
+      return document.getElementById("scopeMode").value === "project" ? Number(document.getElementById("projectSelect").value || 1) : 0;
     }
 
-    function fillFilter(select, values) {
-      values.forEach((value) => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = value;
-        select.appendChild(option);
-      });
+    function applyScope() {
+      const projectMode = document.getElementById("scopeMode").value === "project";
+      document.getElementById("projectSelect").hidden = !projectMode;
+      snapshot = scopeSnapshots[currentScopeIndex()] || scopeSnapshots[0] || initialSnapshot;
+      detailView.classList.remove("open");
+      overview.style.display = "grid";
+      detailFilter = null;
+      renderHeader();
+      renderMap();
+      renderIssues();
     }
 
-    function unique(values) {
-      return Array.from(new Set(values)).sort();
+    function renderHeader() {
+      const actionable = snapshot.issues.filter((issue) => issue.severity !== "info").length;
+      const hero = document.getElementById("hero");
+      hero.style.setProperty("--status", "var(--" + snapshot.conclusion.health + ")");
+      document.getElementById("conclusionTitle").textContent = language === "zh" ? snapshot.conclusion.title : snapshot.conclusion.titleEn;
+      document.getElementById("conclusionDetail").textContent = language === "zh" ? snapshot.conclusion.detail : snapshot.conclusion.detailEn;
+      document.getElementById("effectiveCount").textContent = snapshot.stats.effective;
+      document.getElementById("issueCount").textContent = actionable;
+      document.getElementById("noiseCount").textContent = snapshot.stats.hiddenNoise;
     }
 
-    function filteredRoot() {
-      return allAssets.filter((asset) => {
-        if (scopeFilter.value && asset.scope !== scopeFilter.value) return false;
-        if (ownerFilter.value && asset.owner !== ownerFilter.value) return false;
-        if (typeFilter.value && asset.type !== typeFilter.value) return false;
-        return true;
-      });
+    function worst(items) {
+      const rank = { healthy:0, inactive:0, attention:1, warning:2 };
+      return items.slice().sort((a,b) => rank[b.health] - rank[a.health])[0]?.health || "healthy";
     }
 
-    function nodesFor(items, level) {
-      if (level === "assets") {
-        const sorted = items.slice().sort((a,b) => b.sizeBytes - a.sizeBytes);
-        const visible = sorted.slice(0, MAX_LEAF_TILES);
-        const rest = sorted.slice(MAX_LEAF_TILES);
-        const nodes = visible.map((asset) => ({ id: asset.id, label: asset.name, value: Math.max(1, Math.round(asset.sizeBytes / 1024)), valueLabel: bytes(asset.sizeBytes), colorKey: asset.owner, scopeKey: asset.scope, meta: asset.scope + " / " + asset.owner + " / " + asset.type + " · " + bytes(asset.sizeBytes), assets: [asset], leaf: true }));
-        if (rest.length) {
-          const size = rest.reduce((sum, asset) => sum + asset.sizeBytes, 0);
-          nodes.push({ id: "other:" + rest.length, label: "其他 " + rest.length, value: Math.max(1, Math.round(size / 1024)), valueLabel: bytes(size), colorKey: dominant(rest, "owner"), scopeKey: dominant(rest, "scope"), meta: scopeMix(rest), assets: rest, leaf: true });
-        }
-        return nodes.sort((a,b) => b.value - a.value);
-      }
-      const keyFn = {
-        scope: (a) => a.scope,
-        owner: (a) => a.owner,
-        source: (a) => sourceGroup(a),
-        type: (a) => a.type
-      }[level];
-      return Array.from(group(items, keyFn).entries()).map(([key, assets]) => {
-        const value = metric === "size" ? assets.reduce((sum, asset) => sum + asset.sizeBytes, 0) : assets.length;
-        return {
-          id: key,
-          label: labelFor(level, key),
-          value: metric === "size" ? Math.max(1, Math.round(value / 1024)) : value,
-          valueLabel: metric === "size" ? bytes(value) : String(value),
-          colorKey: level === "scope" || level === "type" ? key : dominant(assets, "owner"),
-          scopeKey: dominant(assets, "scope"),
-          meta: metaFor(level, assets),
-          assets,
-          leaf: false
-        };
-      }).sort((a,b) => b.value - a.value);
-    }
-
-    function sourceGroup(asset) {
-      const parts = asset.path.split("/");
-      const pluginIndex = parts.lastIndexOf("plugins");
-      if (pluginIndex >= 0 && parts[pluginIndex + 1]) return "plugin: " + parts[pluginIndex + 1];
-      const tmpPluginIndex = parts.findIndex((part, index) => part === ".tmp" && parts[index + 1] === "plugins");
-      if (tmpPluginIndex >= 0 && parts[tmpPluginIndex + 3]) return "plugin: " + parts[tmpPluginIndex + 3];
-      if (asset.projectPath) return "project: " + shortLabel(asset.projectPath);
-      const skillIndex = parts.lastIndexOf("skills");
-      if (skillIndex >= 0) return asset.scope + ": " + asset.owner + " skills";
-      const agentIndex = Math.max(parts.lastIndexOf("agents"), parts.lastIndexOf("subagents"));
-      if (agentIndex >= 0) return asset.scope + ": " + asset.owner + " agents";
-      return asset.scope + ": " + asset.owner + " " + asset.type;
-    }
-
-    function labelFor(level, key) {
-      if (level === "source") return shortSourceLabel(key);
-      return key;
-    }
-
-    function shortSourceLabel(value) {
-      if (value.startsWith("plugin: ")) return value.slice(8);
-      if (value.startsWith("project: ")) return value.slice(9);
-      return value;
-    }
-
-    function metaFor(level, assets) {
-      const next = { scope:"系统", owner:"来源", source:"类型", type:"资产" }[level];
-      return scopeMix(assets) + " · 点击看" + next;
-    }
-
-    function dominant(items, field) {
-      const counts = {};
-      items.forEach((item) => counts[item[field]] = (counts[item[field]] || 0) + 1);
-      return Object.entries(counts).sort((a,b) => b[1] - a[1])[0][0] || "unknown";
-    }
-
-    function scopeMix(items) {
-      const counts = {};
-      items.forEach((item) => counts[item.scope] = (counts[item.scope] || 0) + 1);
-      return Object.entries(counts).sort((a,b) => b[1] - a[1]).map(([scope, count]) => scope + ":" + count).join(" ");
-    }
-
-    function shortLabel(value) {
-      if (value === "global") return "global";
-      if (value === "plugin/cache") return "plugin/cache";
-      const parts = value.split("/");
-      return parts[parts.length - 1] || value;
-    }
-
-    function treemap(nodes, x, y, w, h) {
+    function layout(nodes, x, y, w, h) {
       if (!nodes.length) return [];
-      if (nodes.length === 1) return [Object.assign({}, nodes[0], { x, y, w, h })];
-      const total = nodes.reduce((sum, n) => sum + n.value, 0);
+      if (nodes.length === 1) return [Object.assign({}, nodes[0], { x:x, y:y, w:w, h:h })];
+      const total = nodes.reduce((sum,node) => sum + node.value, 0);
       let running = nodes[0].value;
       let split = 1;
-      while (split < nodes.length - 1 && running + nodes[split].value <= total / 2) {
-        running += nodes[split].value;
-        split += 1;
-      }
+      while (split < nodes.length - 1 && running + nodes[split].value <= total / 2) { running += nodes[split].value; split += 1; }
       const a = nodes.slice(0, split);
       const b = nodes.slice(split);
-      const ratio = a.reduce((sum,n)=>sum+n.value,0) / total;
-      if (w >= h) {
-        const aw = w * ratio;
-        return treemap(a, x, y, aw, h).concat(treemap(b, x + aw, y, w - aw, h));
-      }
-      const ah = h * ratio;
-      return treemap(a, x, y, w, ah).concat(treemap(b, x, y + ah, w, h - ah));
+      const ratio = a.reduce((sum,node) => sum + node.value, 0) / total;
+      if (w >= h) return layout(a,x,y,w*ratio,h).concat(layout(b,x+w*ratio,y,w*(1-ratio),h));
+      return layout(a,x,y,w,h*ratio).concat(layout(b,x,y+h*ratio,w,h*(1-ratio)));
     }
 
-    function render() {
-      const current = stack[stack.length - 1];
-      const q = search.value.trim().toLowerCase();
-      const source = q ? current.assets.filter((a) => (a.name + " " + a.path + " " + a.owner + " " + a.type + " " + a.scope + " " + sourceGroup(a)).toLowerCase().includes(q)) : current.assets;
-      const nodes = nodesFor(source, current.level);
-      const crumbSpace = stack.length > 1 ? 6 : 0;
-      const rects = treemap(nodes, 0, crumbSpace, 100, 100 - crumbSpace);
-      const total = Math.max(1, nodes.reduce((sum, node) => sum + node.value, 0));
-      board.innerHTML = rects.map((r) => tileHtml(r, total)).join("");
-      board.querySelectorAll(".tile").forEach((tile) => {
-        const node = nodes.find((n) => n.id === tile.dataset.id);
-        tile.addEventListener("mouseenter", () => showDetail(node));
-        tile.addEventListener("focus", () => showDetail(node));
-        tile.addEventListener("click", () => selectNode(node));
-      });
-      renderCrumbs();
-      showSummary(current, nodes);
+    function renderMap() {
+      const total = Math.max(1, snapshot.systems.reduce((sum,system) => sum + system.influence, 0));
+      mapBoard.innerHTML = snapshot.systems.map((system) => {
+        const nodes = Object.entries(system.byType).map(([type,count]) => {
+          const resources = snapshot.resources.filter((item) => item.effective && item.owner === system.owner && item.type === type);
+          return { id:type, label:typeLabel(type), value:system.byTypeInfluence[type] || 1, count:count, health:worst(resources) };
+        }).sort((a,b) => b.value-a.value);
+        const tiles = layout(nodes,0,0,100,100).map((tile) => {
+          const area = tile.w * tile.h;
+          const cls = area < 750 || tile.w < 25 || tile.h < 22 ? " compact" : "";
+          const tiny = area < 250 || tile.w < 11 || tile.h < 12 ? " tiny" : "";
+          const colors = healthColors[tile.health];
+          const title = tile.label + " · " + tile.count + (language === "zh" ? " 个 · " : " · ") + healthLabel(tile.health);
+          return '<button class="tile'+cls+tiny+'" data-owner="'+esc(system.owner)+'" data-type="'+esc(tile.id)+'" title="'+esc(title)+'" style="left:'+tile.x+'%;top:'+tile.y+'%;width:'+tile.w+'%;height:'+tile.h+'%;--tile:'+colors[0]+';--tile-dark:'+colors[1]+'"><span class="tileLabel">'+esc(tile.label)+'</span><span class="tileState">'+esc(healthLabel(tile.health))+'</span></button>';
+        }).join("");
+        return '<section class="systemGroup" style="flex-grow:'+Math.max(system.influence/total,.08)+'"><button class="systemHead" data-owner="'+esc(system.owner)+'" style="--status:var(--'+system.health+')"><strong>'+esc(system.label)+'</strong><span></span></button><div class="systemTiles">'+tiles+'</div></section>';
+      }).join("");
+      mapBoard.querySelectorAll(".tile").forEach((button) => button.addEventListener("click", () => openDetail({ owner:button.dataset.owner, type:button.dataset.type })));
+      mapBoard.querySelectorAll(".systemHead").forEach((button) => button.addEventListener("click", () => openDetail({ owner:button.dataset.owner })));
     }
 
-    function tileHtml(r, total) {
-      const area = r.w * r.h;
-      const cls = "tile" + (r.leaf ? " asset" : "") + (area < 220 ? " compact" : "") + (area < 80 ? " tiny" : "");
-      const percent = Math.round((r.value / total) * 100) + "%";
-      const valueLabel = r.valueLabel || String(r.assets.length);
-      return '<button class="' + cls + '" data-id="' + escAttr(r.id) + '" style="left:' + r.x + '%;top:' + r.y + '%;width:' + r.w + '%;height:' + r.h + '%;--c:' + (colors[r.colorKey] || colors.unknown) + ';--s:' + (colors[r.scopeKey] || colors.unknown) + '">' +
-        '<span class="tile-label">' + esc(r.label) + '</span><span class="tile-meta">' + esc(r.meta) + '</span><strong>' + esc(valueLabel) + '</strong><em>' + percent + '</em></button>';
-    }
-
-    function selectNode(node) {
-      if (!node) return;
-      if (node.leaf || node.assets.length === 1) {
-        showDetail(node);
-        return;
-      }
-      const current = stack[stack.length - 1];
-      const nextLevel = nextDrillLevel(current.level);
-      stack.push({ label: node.label, assets: node.assets, level: nextLevel });
-      search.value = "";
-      render();
-    }
-
-    function nextDrillLevel(level) {
-      const index = LEVELS.indexOf(level);
-      return LEVELS[Math.min(index + 1, LEVELS.length - 1)];
-    }
-
-    function showDetail(node) {
-      if (!node) return;
-      const top = node.assets.slice().sort((a,b) => b.sizeBytes - a.sizeBytes).slice(0, 18);
-      const size = node.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0);
-      detail.innerHTML = '<h2>' + esc(node.label) + '</h2><p>' + node.assets.length + ' 个资产 · ' + esc(scopeMix(node.assets)) + '</p>' +
-        '<div class="stats"><div class="stat"><span>数量</span><strong>' + node.assets.length + '</strong></div><div class="stat"><span>体积</span><strong>' + esc(bytes(size)) + '</strong></div></div>' +
-        '<ol>' + top.map((a) => '<li><strong>' + esc(a.scope + ' / ' + a.owner + ' / ' + a.type) + '</strong><br>' + esc(a.name + ' · ' + bytes(a.sizeBytes) + ' · ' + date(a.modifiedAt)) + '<br>' + esc(a.path) + '</li>').join("") + '</ol>';
-    }
-
-    function showSummary(current, nodes) {
-      const size = current.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0);
-      const top = nodes.slice(0, 8);
-      detail.innerHTML = '<h2>' + esc(current.label) + '</h2><p class="muted">' + esc(levelName(current.level)) + ' · ' + current.assets.length + ' 个资产</p>' +
-        '<div class="stats"><div class="stat"><span>数量</span><strong>' + current.assets.length + '</strong></div><div class="stat"><span>体积</span><strong>' + esc(bytes(size)) + '</strong></div></div>' +
-        '<ol>' + top.map((node) => '<li><strong>' + esc(node.label) + '</strong><br>' + esc(node.valueLabel + ' · ' + node.meta) + '</li>').join("") + '</ol>';
-    }
-
-    function levelName(level) {
-      return { scope:"作用域", owner:"系统", source:"来源", type:"类型", assets:"资产" }[level] || level;
-    }
-
-    function renderCrumbs() {
-      crumbs.innerHTML = stack.map((item, index) => '<button data-index="' + index + '">' + esc(item.label) + '</button>').join("");
-      crumbs.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
-        stack = stack.slice(0, Number(button.dataset.index) + 1);
-        render();
+    function renderIssues() {
+      const actionable = snapshot.issues.filter((issue) => issue.severity !== "info");
+      if (!actionable.length) { issueList.innerHTML = '<div class="quiet">'+esc(t("emptyIssues"))+'</div>'; return; }
+      issueList.innerHTML = actionable.map((issue,index) => {
+        const color = issue.severity === "warning" ? "var(--warning)" : "var(--attention)";
+        const title = language === "zh" ? issue.title : issue.titleEn;
+        const detail = language === "zh" ? issue.detail : issue.detailEn;
+        const action = language === "zh" ? issue.action : issue.actionEn;
+        return '<button class="issue" data-index="'+index+'" style="--issue:'+color+'"><strong>'+esc(title)+'</strong><p>'+esc(detail)+'</p><p class="next">'+esc(t("next"))+': '+esc(action)+'</p></button>';
+      }).join("");
+      issueList.querySelectorAll(".issue").forEach((button) => button.addEventListener("click", () => {
+        const issue = actionable[Number(button.dataset.index)];
+        openDetail({ ids:issue.assetIds, type:issue.type, titleZh:issue.title, titleEn:issue.titleEn });
       }));
     }
 
-    function resetToRoot() {
-      const assets = filteredRoot();
-      stack = [{ label: rootLabel(), assets, level: rootLevel() }];
-      render();
+    function openDetail(filter) {
+      detailFilter = filter;
+      overview.style.display = "none";
+      detailView.classList.add("open");
+      detailSearch.value = "";
+      renderDetail();
+      window.scrollTo({ top:0, behavior:"smooth" });
     }
 
-    function rootLabel() {
-      const parts = [scopeFilter.value, ownerFilter.value, typeFilter.value].filter(Boolean);
-      return parts.length ? parts.join(" / ") : "全部";
+    function filteredResources() {
+      let items = snapshot.resources.filter((item) => item.effective);
+      if (detailFilter.ids?.length) items = snapshot.resources.filter((item) => detailFilter.ids.includes(item.id));
+      if (detailFilter.owner) items = items.filter((item) => item.owner === detailFilter.owner);
+      if (detailFilter.type) items = items.filter((item) => item.type === detailFilter.type);
+      const query = detailSearch.value.trim().toLowerCase();
+      if (query) items = items.filter((item) => (item.name+" "+item.path+" "+item.reason).toLowerCase().includes(query));
+      const rank = { warning:3, attention:2, healthy:1, inactive:0 };
+      return items.sort((a,b) => rank[b.health] - rank[a.health] || a.name.localeCompare(b.name));
     }
 
-    function rootLevel() {
-      if (scopeFilter.value === "project") return "source";
-      if (scopeFilter.value && ownerFilter.value) return "source";
-      if (scopeFilter.value) return "owner";
-      return "scope";
+    function renderDetail() {
+      const items = filteredResources();
+      const issueTitle = language === "zh" ? detailFilter.titleZh : detailFilter.titleEn;
+      const base = issueTitle || [detailFilter.owner ? ownerLabel(detailFilter.owner) : "", detailFilter.type ? typeLabel(detailFilter.type) : ""].filter(Boolean).join(" · ") || (language === "zh" ? "资源" : "Resources");
+      document.getElementById("detailHeading").textContent = base;
+      document.getElementById("detailSummary").textContent = language === "zh" ? items.length + " " + t("resourceSummary") : items.length + t("resourceSummary");
+      const counts = { healthy:0, attention:0, warning:0, inactive:0 };
+      items.forEach((item) => counts[item.health] += 1);
+      document.getElementById("chips").innerHTML = Object.entries(counts).filter(([,count]) => count).map(([health,count]) => '<span class="chip">'+esc(healthLabel(health))+' '+count+'</span>').join("");
+      const list = document.getElementById("resourceList");
+      if (!items.length) { list.innerHTML = '<div class="empty">'+esc(t("emptyResources"))+'</div>'; return; }
+      list.innerHTML = items.slice(0,300).map((item) => {
+        const color = healthColors[item.health][0];
+        const reason = language === "zh" ? item.reason : item.reasonEn;
+        return '<article class="resourceRow"><div class="resourceName"><strong>'+esc(item.name)+'</strong><span>'+esc(typeLabel(item.type))+' · '+esc(item.scope)+'</span></div><span class="badge" style="--badge:'+color+'"><i></i>'+esc(healthLabel(item.health))+'</span><div class="resourceReason">'+esc(reason)+'<br>'+esc(t("confidence"))+': '+esc(confidenceLabels[language][item.confidence] || item.confidence)+'</div><div class="resourcePath">'+esc(item.path)+'</div></article>';
+      }).join("");
     }
 
-    metricButtons.forEach((button) => button.addEventListener("click", () => {
-      metricButtons.forEach((b) => b.classList.remove("active"));
-      button.classList.add("active");
-      metric = button.dataset.metric;
-      render();
-    }));
-    search.addEventListener("input", render);
-    [scopeFilter, ownerFilter, typeFilter].forEach((select) => select.addEventListener("change", resetToRoot));
-    document.getElementById("lang").addEventListener("click", () => document.body.classList.toggle("en"));
-    function bytes(n) { if (n < 1024) return n + " B"; if (n < 1024 * 1024) return Math.round(n / 1024) + " KB"; return (n / 1024 / 1024).toFixed(1) + " MB"; }
-    function date(value) { return String(value || "").slice(0, 10); }
-    function esc(value) { return String(value).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
-    function escAttr(value) { return esc(value).replace(/"/g, "&quot;"); }
-    setupFilters();
-    resetToRoot();
+    function ownerLabel(owner) { return snapshot.systems.find((system) => system.owner === owner)?.label || owner; }
+    function esc(value) { return String(value ?? "").replace(/[&<>"']/g,(char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
+    document.getElementById("back").addEventListener("click", () => { detailView.classList.remove("open"); overview.style.display = "grid"; detailFilter = null; });
+    detailSearch.addEventListener("input", renderDetail);
+    document.getElementById("scopeMode").addEventListener("change", applyScope);
+    document.getElementById("projectSelect").addEventListener("change", applyScope);
+
+    const aiModal = document.getElementById("aiModal");
+    const aiContext = document.getElementById("aiContext");
+    document.getElementById("showAiContext").addEventListener("click", () => {
+      const index = currentScopeIndex();
+      aiContext.textContent = scopeContexts[index]?.[language] || "";
+      aiModal.classList.add("open");
+    });
+    document.getElementById("closeAiContext").addEventListener("click", () => aiModal.classList.remove("open"));
+    document.getElementById("copyAiContext").addEventListener("click", async (event) => {
+      const text = aiContext.textContent || "";
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const input = document.createElement("textarea");
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+      }
+      event.target.textContent = t("copied");
+      setTimeout(() => { event.target.textContent = t("copyMarkdown"); }, 1200);
+    });
+    document.getElementById("langToggle").addEventListener("click", () => {
+      language = language === "zh" ? "en" : "zh";
+      applyLanguage();
+      renderHeader();
+      renderMap();
+      renderIssues();
+      if (detailView.classList.contains("open")) renderDetail();
+      if (aiModal.classList.contains("open")) {
+        const index = currentScopeIndex();
+        aiContext.textContent = scopeContexts[index]?.[language] || "";
+      }
+    });
+    aiModal.addEventListener("click", (event) => { if (event.target === aiModal) aiModal.classList.remove("open"); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") aiModal.classList.remove("open"); });
+    applyLanguage();
+    applyScope();
   </script>
 </body>
 </html>`;

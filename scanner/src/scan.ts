@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import os from "node:os";
 import { classifyType, detectOwner, detectScope } from "./classify.ts";
 import type { Asset, Signals } from "./classify.ts";
-import { desktopDir, explicitProjectRoots, globalRoots, projectConfigNames, shouldSkipDesktop, skipDirNames } from "./paths.ts";
+import { desktopDir, explicitProjectRoots, globalRoots, projectConfigNames, projectMarkerNames, shouldSkipDesktop, skipDirNames } from "./paths.ts";
 
 export interface Atlas {
   generatedAt: string;
@@ -210,7 +210,8 @@ async function collectProjectCandidates(projectPath: string): Promise<Candidate[
   const candidates: Candidate[] = [];
   const projectEntries = await listDir(projectPath);
   const hasAiConfig = projectEntries.some((projectEntry) => projectConfigNames.has(projectEntry.name));
-  if (!hasAiConfig) return candidates;
+  const hasProjectMarker = projectEntries.some((projectEntry) => projectMarkerNames.has(projectEntry.name));
+  if (!hasAiConfig && !hasProjectMarker) return candidates;
 
   candidates.push({ path: projectPath, projectPath, forceType: "project" });
 

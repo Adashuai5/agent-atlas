@@ -8,6 +8,8 @@ export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.u
 export const dataDir = path.join(projectRoot, "data");
 export const atlasJsonPath = path.join(dataDir, "atlas.json");
 export const atlasHtmlPath = path.join(dataDir, "atlas.html");
+export const atlasContextJsonPath = path.join(dataDir, "atlas-context.json");
+export const atlasContextMarkdownPath = path.join(dataDir, "atlas-context.md");
 
 export const globalRoots = [
   path.join(homeDir, ".codex"),
@@ -46,4 +48,17 @@ export const projectConfigNames = new Set([
   "MEMORY.md",
   "USER.md",
   ".mcp.json"
+]);
+
+export const projectMarkerNames = new Set([
+  ".git",
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "build.gradle.kts",
+  "Gemfile",
+  "composer.json"
 ]);

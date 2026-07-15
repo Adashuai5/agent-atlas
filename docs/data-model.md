@@ -47,3 +47,16 @@ Types: `skill`, `memory`, `mcp`, `agent`, `config`, `session`, `project`.
 Owners: `codex`, `claude`, `agents`, `hermes`, `unknown`.
 
 Scopes: `global`, `project`, `plugin`, `cache`, `unknown`.
+
+`data/atlas-context.json` is the interpreted snapshot consumed by the HTML and
+AI Markdown renderers. It adds:
+
+- `conclusion`: the answer shown first
+- `systems`: per-system resource mix, influence, and health
+- `resources`: effective state, confidence, and the reason for that judgment
+- `issues`: severity, evidence asset IDs, and recommended next action
+- `stats`: effective, discovered, and folded-noise counts
+
+Health values: `healthy`, `attention`, `warning`, `inactive`.
+
+Confidence values: `confirmed`, `inferred`, `unknown`.

@@ -28,6 +28,9 @@ export interface Asset {
 
 export function detectOwner(filePath: string): Owner {
   const parts = filePath.split(path.sep);
+  const base = path.basename(filePath).toLowerCase();
+  if (base === "claude.md") return "claude";
+  if (base === "agents.md") return "agents";
   if (parts.includes(".codex") || parts.includes("codex")) return "codex";
   if (parts.includes(".claude") || parts.includes("claude")) return "claude";
   if (parts.includes(".agents") || parts.includes("agents") || parts.includes("subagents")) return "agents";

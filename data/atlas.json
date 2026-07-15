@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-10T19:56:26.871Z",
+  "generatedAt": "2026-07-15T16:41:30.700Z",
   "computer": {
     "hostname": "AdadeMacBook-Pro.local",
     "home": "/Users/ada"
@@ -20478,7 +20478,7 @@
       "path": "/Users/ada/.codex/skills/.system/imagegen/agents",
       "projectPath": null,
       "sizeBytes": 275,
-      "modifiedAt": "2026-07-02T14:07:13.694Z",
+      "modifiedAt": "2026-07-11T13:56:48.576Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -20496,7 +20496,7 @@
       "path": "/Users/ada/.codex/skills/.system/imagegen/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 275,
-      "modifiedAt": "2026-07-02T14:07:13.694Z",
+      "modifiedAt": "2026-07-11T13:56:48.576Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -20511,7 +20511,7 @@
       "path": "/Users/ada/.codex/skills/.system/openai-docs/agents",
       "projectPath": null,
       "sizeBytes": 598,
-      "modifiedAt": "2026-07-02T14:07:13.697Z",
+      "modifiedAt": "2026-07-11T13:56:48.579Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -20529,7 +20529,7 @@
       "path": "/Users/ada/.codex/skills/.system/openai-docs/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 598,
-      "modifiedAt": "2026-07-02T14:07:13.697Z",
+      "modifiedAt": "2026-07-11T13:56:48.580Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -20544,7 +20544,7 @@
       "path": "/Users/ada/.codex/skills/.system/plugin-creator/agents",
       "projectPath": null,
       "sizeBytes": 339,
-      "modifiedAt": "2026-07-02T14:07:13.700Z",
+      "modifiedAt": "2026-07-11T13:56:48.583Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -20562,7 +20562,7 @@
       "path": "/Users/ada/.codex/skills/.system/plugin-creator/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 339,
-      "modifiedAt": "2026-07-02T14:07:13.700Z",
+      "modifiedAt": "2026-07-11T13:56:48.583Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -20577,7 +20577,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-creator/agents",
       "projectPath": null,
       "sizeBytes": 183,
-      "modifiedAt": "2026-07-02T14:07:13.703Z",
+      "modifiedAt": "2026-07-11T13:56:48.586Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -20595,7 +20595,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-creator/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 183,
-      "modifiedAt": "2026-07-02T14:07:13.703Z",
+      "modifiedAt": "2026-07-11T13:56:48.586Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -20610,7 +20610,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-installer/agents",
       "projectPath": null,
       "sizeBytes": 221,
-      "modifiedAt": "2026-07-02T14:07:13.706Z",
+      "modifiedAt": "2026-07-11T13:56:48.590Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -20628,7 +20628,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-installer/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 221,
-      "modifiedAt": "2026-07-02T14:07:13.706Z",
+      "modifiedAt": "2026-07-11T13:56:48.590Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -20757,6 +20757,60 @@
   ],
   "projects": [
     {
+      "id": "4e5e9b2472719f26",
+      "name": "agent-atlas",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/agent-atlas",
+      "projectPath": "/Users/ada/Desktop/agent-atlas",
+      "sizeBytes": 9206789,
+      "modifiedAt": "2026-07-14T08:24:39.279Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": false,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 6
+      }
+    },
+    {
+      "id": "10abe9eb4a9f9f27",
+      "name": "checkpoint-skill",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/checkpoint-skill",
+      "projectPath": "/Users/ada/Desktop/checkpoint-skill",
+      "sizeBytes": 6547,
+      "modifiedAt": "2026-06-08T17:08:19.166Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": true,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 4
+      }
+    },
+    {
+      "id": "2b8fcf33a425162a",
+      "name": "quota-autopilot",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/quota-autopilot",
+      "projectPath": "/Users/ada/Desktop/quota-autopilot",
+      "sizeBytes": 219334,
+      "modifiedAt": "2026-07-15T15:49:06.000Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": false,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 21
+      }
+    },
+    {
       "id": "cc1ad51c52d49d19",
       "name": "下一程",
       "type": "project",
@@ -20764,7 +20818,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 1319820,
+      "sizeBytes": 1501226,
       "modifiedAt": "2026-07-04T04:30:49.071Z",
       "signals": {
         "isDirectory": true,
@@ -21069,8 +21123,8 @@
       "scope": "global",
       "path": "/Users/ada/.claude",
       "projectPath": null,
-      "sizeBytes": 101144249,
-      "modifiedAt": "2026-07-03T18:16:22.984Z",
+      "sizeBytes": 74266706,
+      "modifiedAt": "2026-07-13T06:53:33.367Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -22480,7 +22534,7 @@
       "path": "/Users/ada/.claude/sessions",
       "projectPath": null,
       "sizeBytes": 0,
-      "modifiedAt": "2026-07-03T18:16:24.417Z",
+      "modifiedAt": "2026-07-13T07:00:57.956Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -22612,14 +22666,14 @@
       "scope": "global",
       "path": "/Users/ada/.codex",
       "projectPath": null,
-      "sizeBytes": 5932114744,
-      "modifiedAt": "2026-07-10T19:53:43.070Z",
+      "sizeBytes": 7033958064,
+      "modifiedAt": "2026-07-15T16:40:40.291Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
         "hasReadme": false,
         "hasMcpConfig": false,
-        "childCount": 31
+        "childCount": 33
       }
     },
     {
@@ -25296,7 +25350,7 @@
       "id": "25a120713ad0300f",
       "name": "AGENTS.md",
       "type": "memory",
-      "owner": "codex",
+      "owner": "agents",
       "scope": "plugin",
       "path": "/Users/ada/.codex/.tmp/plugins/plugins/build-web-apps/skills/react-best-practices/AGENTS.md",
       "projectPath": null,
@@ -25464,7 +25518,7 @@
       "id": "6ce3f32ec335e9b0",
       "name": "AGENTS.md",
       "type": "memory",
-      "owner": "codex",
+      "owner": "agents",
       "scope": "plugin",
       "path": "/Users/ada/.codex/.tmp/plugins/plugins/build-web-apps/skills/supabase-best-practices/AGENTS.md",
       "projectPath": null,
@@ -53340,7 +53394,7 @@
       "id": "662cd881b7079092",
       "name": "AGENTS.md",
       "type": "memory",
-      "owner": "codex",
+      "owner": "agents",
       "scope": "plugin",
       "path": "/Users/ada/.codex/.tmp/plugins/plugins/zoom/AGENTS.md",
       "projectPath": null,
@@ -56179,8 +56233,8 @@
       "scope": "global",
       "path": "/Users/ada/.codex/config.toml",
       "projectPath": null,
-      "sizeBytes": 1597,
-      "modifiedAt": "2026-07-04T13:47:27.022Z",
+      "sizeBytes": 1813,
+      "modifiedAt": "2026-07-15T16:40:40.291Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57454,7 +57508,7 @@
       "scope": "global",
       "path": "/Users/ada/.codex/sessions",
       "projectPath": null,
-      "sizeBytes": 63887168,
+      "sizeBytes": 93190865,
       "modifiedAt": "2026-04-26T05:01:53.515Z",
       "signals": {
         "isDirectory": true,
@@ -57473,14 +57527,14 @@
       "scope": "global",
       "path": "/Users/ada/.codex/skills",
       "projectPath": null,
-      "sizeBytes": 468884,
-      "modifiedAt": "2026-07-03T18:21:31.916Z",
+      "sizeBytes": 471355,
+      "modifiedAt": "2026-07-13T07:56:18.625Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
         "hasReadme": false,
         "hasMcpConfig": false,
-        "childCount": 9
+        "childCount": 10
       }
     },
     {
@@ -57492,7 +57546,7 @@
       "path": "/Users/ada/.codex/skills/.system/imagegen",
       "projectPath": null,
       "sizeBytes": 135518,
-      "modifiedAt": "2026-07-02T14:07:13.696Z",
+      "modifiedAt": "2026-07-11T13:56:48.578Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57510,7 +57564,7 @@
       "path": "/Users/ada/.codex/skills/.system/imagegen/agents",
       "projectPath": null,
       "sizeBytes": 275,
-      "modifiedAt": "2026-07-02T14:07:13.694Z",
+      "modifiedAt": "2026-07-11T13:56:48.576Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57528,7 +57582,7 @@
       "path": "/Users/ada/.codex/skills/.system/imagegen/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 275,
-      "modifiedAt": "2026-07-02T14:07:13.694Z",
+      "modifiedAt": "2026-07-11T13:56:48.576Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57543,7 +57597,7 @@
       "path": "/Users/ada/.codex/skills/.system/openai-docs",
       "projectPath": null,
       "sizeBytes": 80375,
-      "modifiedAt": "2026-07-02T14:07:13.699Z",
+      "modifiedAt": "2026-07-11T13:56:48.581Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57561,7 +57615,7 @@
       "path": "/Users/ada/.codex/skills/.system/openai-docs/agents",
       "projectPath": null,
       "sizeBytes": 598,
-      "modifiedAt": "2026-07-02T14:07:13.697Z",
+      "modifiedAt": "2026-07-11T13:56:48.579Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57579,7 +57633,7 @@
       "path": "/Users/ada/.codex/skills/.system/openai-docs/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 598,
-      "modifiedAt": "2026-07-02T14:07:13.697Z",
+      "modifiedAt": "2026-07-11T13:56:48.580Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57594,7 +57648,7 @@
       "path": "/Users/ada/.codex/skills/.system/plugin-creator",
       "projectPath": null,
       "sizeBytes": 66406,
-      "modifiedAt": "2026-07-02T14:07:13.702Z",
+      "modifiedAt": "2026-07-11T13:56:48.584Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57612,7 +57666,7 @@
       "path": "/Users/ada/.codex/skills/.system/plugin-creator/agents",
       "projectPath": null,
       "sizeBytes": 339,
-      "modifiedAt": "2026-07-02T14:07:13.700Z",
+      "modifiedAt": "2026-07-11T13:56:48.583Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57630,7 +57684,7 @@
       "path": "/Users/ada/.codex/skills/.system/plugin-creator/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 339,
-      "modifiedAt": "2026-07-02T14:07:13.700Z",
+      "modifiedAt": "2026-07-11T13:56:48.583Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57645,7 +57699,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-creator",
       "projectPath": null,
       "sizeBytes": 63852,
-      "modifiedAt": "2026-07-02T14:07:13.704Z",
+      "modifiedAt": "2026-07-11T13:56:48.587Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57663,7 +57717,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-creator/agents",
       "projectPath": null,
       "sizeBytes": 183,
-      "modifiedAt": "2026-07-02T14:07:13.703Z",
+      "modifiedAt": "2026-07-11T13:56:48.586Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57681,7 +57735,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-creator/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 183,
-      "modifiedAt": "2026-07-02T14:07:13.703Z",
+      "modifiedAt": "2026-07-11T13:56:48.586Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57695,8 +57749,8 @@
       "scope": "global",
       "path": "/Users/ada/.codex/skills/.system/skill-installer",
       "projectPath": null,
-      "sizeBytes": 31060,
-      "modifiedAt": "2026-07-02T14:07:13.706Z",
+      "sizeBytes": 31061,
+      "modifiedAt": "2026-07-11T13:56:48.590Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57714,7 +57768,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-installer/agents",
       "projectPath": null,
       "sizeBytes": 221,
-      "modifiedAt": "2026-07-02T14:07:13.706Z",
+      "modifiedAt": "2026-07-11T13:56:48.590Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57732,7 +57786,7 @@
       "path": "/Users/ada/.codex/skills/.system/skill-installer/agents/openai.yaml",
       "projectPath": null,
       "sizeBytes": 221,
-      "modifiedAt": "2026-07-02T14:07:13.706Z",
+      "modifiedAt": "2026-07-11T13:56:48.590Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -57746,8 +57800,8 @@
       "scope": "global",
       "path": "/Users/ada/.codex/skills/ada-decision-kernel",
       "projectPath": null,
-      "sizeBytes": 24633,
-      "modifiedAt": "2026-07-03T18:28:59.661Z",
+      "sizeBytes": 26879,
+      "modifiedAt": "2026-07-15T16:27:45.670Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": true,
@@ -57924,7 +57978,7 @@
       "path": "/Users/ada/.hermes",
       "projectPath": null,
       "sizeBytes": 36733400,
-      "modifiedAt": "2026-06-26T18:00:25.533Z",
+      "modifiedAt": "2026-07-12T17:24:25.092Z",
       "signals": {
         "isDirectory": true,
         "hasSkillMd": false,
@@ -57942,7 +57996,7 @@
       "path": "/Users/ada/.hermes/config.yaml",
       "projectPath": null,
       "sizeBytes": 5055,
-      "modifiedAt": "2026-06-26T18:00:25.532Z",
+      "modifiedAt": "2026-07-12T17:24:25.091Z",
       "signals": {
         "isDirectory": false,
         "childCount": 0
@@ -58237,7 +58291,7 @@
       "id": "0389f0c7105af95b",
       "name": "AGENTS.md",
       "type": "memory",
-      "owner": "hermes",
+      "owner": "agents",
       "scope": "global",
       "path": "/Users/ada/.hermes/hermes-agent/AGENTS.md",
       "projectPath": null,
@@ -61156,7 +61210,7 @@
       "id": "f872f25294eb47a1",
       "name": "claude.md",
       "type": "memory",
-      "owner": "hermes",
+      "owner": "claude",
       "scope": "global",
       "path": "/Users/ada/.hermes/hermes-agent/skills/creative/popular-web-designs/templates/claude.md",
       "projectPath": null,
@@ -69725,7 +69779,7 @@
       "id": "64e8575591872567",
       "name": "claude.md",
       "type": "memory",
-      "owner": "hermes",
+      "owner": "claude",
       "scope": "global",
       "path": "/Users/ada/.hermes/skills/creative/popular-web-designs/templates/claude.md",
       "projectPath": null,
@@ -71363,6 +71417,60 @@
       }
     },
     {
+      "id": "4e5e9b2472719f26",
+      "name": "agent-atlas",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/agent-atlas",
+      "projectPath": "/Users/ada/Desktop/agent-atlas",
+      "sizeBytes": 9206789,
+      "modifiedAt": "2026-07-14T08:24:39.279Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": false,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 6
+      }
+    },
+    {
+      "id": "10abe9eb4a9f9f27",
+      "name": "checkpoint-skill",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/checkpoint-skill",
+      "projectPath": "/Users/ada/Desktop/checkpoint-skill",
+      "sizeBytes": 6547,
+      "modifiedAt": "2026-06-08T17:08:19.166Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": true,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 4
+      }
+    },
+    {
+      "id": "2b8fcf33a425162a",
+      "name": "quota-autopilot",
+      "type": "project",
+      "owner": "unknown",
+      "scope": "project",
+      "path": "/Users/ada/Desktop/quota-autopilot",
+      "projectPath": "/Users/ada/Desktop/quota-autopilot",
+      "sizeBytes": 219334,
+      "modifiedAt": "2026-07-15T15:49:06.000Z",
+      "signals": {
+        "isDirectory": true,
+        "hasSkillMd": false,
+        "hasReadme": true,
+        "hasMcpConfig": false,
+        "childCount": 21
+      }
+    },
+    {
       "id": "cc1ad51c52d49d19",
       "name": "下一程",
       "type": "project",
@@ -71370,7 +71478,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 1319820,
+      "sizeBytes": 1501226,
       "modifiedAt": "2026-07-04T04:30:49.071Z",
       "signals": {
         "isDirectory": true,
@@ -71388,7 +71496,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程/.claude",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 12984,
+      "sizeBytes": 15319,
       "modifiedAt": "2026-07-03T18:16:24.427Z",
       "signals": {
         "isDirectory": true,
@@ -71421,7 +71529,7 @@
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程/.claude/skills",
       "projectPath": "/Users/ada/Desktop/下一程",
-      "sizeBytes": 11084,
+      "sizeBytes": 13419,
       "modifiedAt": "2026-06-28T02:03:50.960Z",
       "signals": {
         "isDirectory": true,
@@ -71435,7 +71543,7 @@
       "id": "e059a27769ddfb35",
       "name": "CLAUDE.md",
       "type": "memory",
-      "owner": "unknown",
+      "owner": "claude",
       "scope": "project",
       "path": "/Users/ada/Desktop/下一程/CLAUDE.md",
       "projectPath": "/Users/ada/Desktop/下一程",
@@ -71448,7 +71556,7 @@
     }
   ],
   "summary": {
-    "assetCount": 3033,
+    "assetCount": 3036,
     "byType": {
       "config": 761,
       "skill": 969,
@@ -71456,19 +71564,19 @@
       "memory": 16,
       "mcp": 24,
       "session": 6,
-      "project": 1
+      "project": 4
     },
     "byOwner": {
-      "agents": 23,
-      "claude": 94,
-      "codex": 2087,
-      "hermes": 827,
-      "unknown": 2
+      "agents": 27,
+      "claude": 97,
+      "codex": 2084,
+      "hermes": 824,
+      "unknown": 4
     },
     "byScope": {
       "global": 850,
       "plugin": 2178,
-      "project": 5
+      "project": 8
     }
   }
 }
