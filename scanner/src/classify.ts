@@ -1,7 +1,9 @@
+import os from "node:os";
 import path from "node:path";
+import type { AssetIdentityReferences, PathIdentity, StateAssessment } from "./model.ts";
 
-export type AssetType = "skill" | "memory" | "mcp" | "agent" | "config" | "session" | "project";
-export type Owner = "codex" | "claude" | "agents" | "hermes" | "unknown";
+export type AssetType = "skill" | "memory" | "mcp" | "agent" | "config" | "session" | "project" | "plugin";
+export type Owner = "codex" | "claude" | "agents" | "hermes" | "project" | "unknown";
 export type Scope = "global" | "project" | "plugin" | "cache" | "unknown";
 
 export interface Signals {
@@ -11,6 +13,8 @@ export interface Signals {
   isDirectory?: boolean;
   childCount?: number;
   sessionCount?: number;
+  isTemplate?: boolean;
+  pluginPackage?: boolean;
 }
 
 export interface Asset {
@@ -24,17 +28,37 @@ export interface Asset {
   sizeBytes: number;
   modifiedAt: string;
   signals: Signals;
+  /** Physical storage owner. Runtime loading is represented by graph bindings. */
+  placementOwner: Owner;
+  identity: PathIdentity;
+  states: {
+    present: StateAssessment;
+    valid: StateAssessment;
+  };
+  graph: AssetIdentityReferences;
 }
 
-export function detectOwner(filePath: string): Owner {
-  const parts = filePath.split(path.sep);
-  const base = path.basename(filePath).toLowerCase();
-  if (base === "claude.md") return "claude";
-  if (base === "agents.md") return "agents";
-  if (parts.includes(".codex") || parts.includes("codex")) return "codex";
-  if (parts.includes(".claude") || parts.includes("claude")) return "claude";
-  if (parts.includes(".agents") || parts.includes("agents") || parts.includes("subagents")) return "agents";
-  if (parts.includes(".hermes") || parts.includes("hermes")) return "hermes";
+function isInside(candidate: string, root: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== "..");
+}
+
+/**
+ * Storage ownership is determined only by a configured storage root. Runtime
+ * consumers are represented by bindings and must never be inferred from an
+ * arbitrary `codex`, `claude`, or `agents` path segment.
+ */
+export function detectOwner(filePath: string, homeDir = os.homedir(), projectPath: string | null = null): Owner {
+  const roots: [Owner, string][] = [
+    ["codex", path.join(homeDir, ".codex")],
+    ["claude", path.join(homeDir, ".claude")],
+    ["agents", path.join(homeDir, ".agents")],
+    ["hermes", path.join(homeDir, ".hermes")]
+  ];
+  for (const [owner, root] of roots) {
+    if (isInside(filePath, root)) return owner;
+  }
+  if (projectPath && isInside(filePath, projectPath)) return "project";
   return "unknown";
 }
 
@@ -55,6 +79,7 @@ export function classifyType(filePath: string, isDirectory: boolean, signals: Si
   const parent = path.basename(path.dirname(filePath)).toLowerCase();
 
   if (signals.hasSkillMd || lower === "skill.md") return "skill";
+  if (lower === "plugin.json" && [".codex-plugin", ".claude-plugin"].includes(parent)) return "plugin";
   if (base === ".mcp.json" || signals.hasMcpConfig) return "mcp";
   if (["claude.md", "agents.md", "memory.md", "user.md"].includes(lower)) return "memory";
   if (isDirectory && ["agents", "subagents"].includes(lower)) return "agent";

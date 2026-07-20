@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "scan": "node src/index.ts",
-    "scan:ada": "AGENT_ATLAS_SKIP_DESKTOP=1 AGENT_ATLAS_PROJECT_ROOTS='/Users/ada/Desktop/下一程' node src/index.ts"
+    "scan:ada": "AGENT_ATLAS_SKIP_DESKTOP=1 AGENT_ATLAS_PROJECT_ROOTS='/Users/ada/Desktop/下一程' node src/index.ts",
+    "test": "node --test test/*.test.ts",
+    "test:coverage": "node --experimental-test-coverage --test test/*.test.ts"
   },
   "engines": {
     "node": ">=24"

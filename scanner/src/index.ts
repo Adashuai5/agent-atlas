@@ -1,6 +1,6 @@
 import { scanAtlas } from "./scan.ts";
 import { writeAtlas } from "./output.ts";
-import { atlasContextJsonPath, atlasContextMarkdownPath, atlasHtmlPath, atlasJsonPath } from "./paths.ts";
+import { atlasContextFullMarkdownPath, atlasContextJsonPath, atlasContextMarkdownPath, atlasHtmlPath, atlasJsonPath } from "./paths.ts";
 
 async function main(): Promise<void> {
   const atlas = await scanAtlas();
@@ -20,6 +20,8 @@ async function main(): Promise<void> {
   console.log(`JSON: ${atlasJsonPath}`);
   console.log(`Context JSON: ${atlasContextJsonPath}`);
   console.log(`AI Markdown: ${atlasContextMarkdownPath}`);
+  console.log(`Full AI Markdown (global EN): ${atlasContextFullMarkdownPath}`);
+  console.log("Full AI Markdown variants: global/project × EN/zh files under data/");
   console.log(`HTML: ${atlasHtmlPath}`);
 }
 
