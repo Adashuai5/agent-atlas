@@ -164,6 +164,19 @@ Atlas parses JSON configuration syntax. Readable TOML/YAML remains
 `valid="unknown"` until a format-aware parser verifies it; readability is not
 silently upgraded into confirmed semantic validity.
 
+## Evidence ledger
+
+The interpreted snapshot publishes two explicit denominators:
+
+- `installations.total`, with `present` and `valid` split into
+  `true` / `false` / `unknown`
+- `bindings.total`, `visible`, `shadowed`, and `visibilityUnknown`, with
+  `enabled` and `loaded` split into `true` / `false` / `unknown`
+
+Installation and binding counts answer different questions and must not be
+combined into one lifecycle funnel. In either denominator, `unknown` is an
+evidence result and never means `false`.
+
 ## Diagnoses
 
 Same name is only a grouping hint. Diagnosis requires filesystem/content
@@ -208,10 +221,10 @@ promoted to `loaded=true` without runtime/session evidence.
 ## Human and AI views
 
 The interpreted snapshot preserves bilingual conclusions, project scope,
-confidence, diagnoses, and evidence references. Heatmap area uses
-`resourceSurfaceWeight`: a display weight for the amount of the visible
-resource surface. It is not usage, runtime loading, effectiveness, or actual
-influence, and the UI must not describe it as such.
+confidence, diagnoses, evidence references, lineage projections, and the
+evidence ledger. `resourceSurfaceWeight` is display-only metadata; the current
+dashboard distribution uses counts and must never be read as loading, use,
+effectiveness, enablement, or influence.
 
 Outputs have different size contracts:
 
@@ -224,8 +237,10 @@ Outputs have different size contracts:
 - `data/atlas-context-project-N-full.md` and its `.zh.md` counterpart:
   complete per-project English/Chinese Markdown. The dashboard link follows
   the currently selected scope and language.
-- `data/atlas.html`: bilingual human dashboard with global default scope,
-  project cascading selection, drill-down, and per-scope AI Context.
+- `data/atlas.html`: bilingual diagnosis-first workspace with the evidence
+  ledger/runtime matrix, lineage relations, package-level plugin lifecycle,
+  resource evidence explorer, global default scope, project cascading
+  selection, and per-scope AI Context.
 
 The compact HTML model may omit inactive detail rows to control file size. The
 full JSON remains the source of truth, and the full Markdown provides the

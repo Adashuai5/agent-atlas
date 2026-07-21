@@ -72,6 +72,14 @@ scope. Select Project and then a discovered project for cascading project
 analysis; use the language control to switch Chinese and English. The AI
 Context control shows the compact Markdown for the currently selected scope.
 
+The dashboard opens on Diagnosis: an evidence-bounded verdict, separate
+installation and binding denominators, a diagnosis/evidence queue, and a
+runtime state matrix. Relations traces canonical source → installation or
+location → binding and consumer. Plugins keeps bundled, installed, enabled,
+and loaded independent. Resource audit exposes identity, state, and graph
+evidence. Scope and language controls apply to both the dashboard and AI
+Context.
+
 For AI use, read `data/atlas-context.md` when a compact handoff is preferred,
 the matching full file when every resource for a scope/language is needed, or
 `data/atlas.json` for complete structured evidence. The dashboard's Full
@@ -106,9 +114,11 @@ not automatically an installed or active plugin. Hermes user-plugin roots and
 explicit plugin enable/disable configuration are included; symlink ownership
 follows the resolved installation target.
 
-Dashboard area is `resourceSurfaceWeight`: a display weight for the size of
-the visible resource surface. It is not actual influence, usage,
-effectiveness, or proof of loading.
+The dashboard's secondary resource-surface distribution reports
+runtime-visible counts by consumer and a separate non-plugin inventory count.
+It is scale and coverage context, not influence, usage, effectiveness,
+enablement, or loading evidence. `resourceSurfaceWeight` remains display-only
+model metadata for clients that choose an area encoding.
 
 See `docs/data-model.md` for the complete graph contract and
 `docs/product.md` for product interpretation and safety rules.

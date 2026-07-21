@@ -23,6 +23,32 @@ export interface ResourceLifecycle {
   loaded: StateAssessment;
 }
 
+export interface ResourceLineage {
+  canonical: {
+    id: string;
+    sourceType: string | null;
+    source: string | null;
+    sourceUrl: string | null;
+    sourcePath: string | null;
+    confidence: Confidence;
+  } | null;
+  installation: {
+    id: string;
+    role: "primary" | "mirror";
+    physicalId: string | null;
+    contentHash: string | null;
+    hashAlgorithm: string | null;
+    locationCount: number;
+  } | null;
+  binding: {
+    id: string;
+    discovery: Binding["discovery"];
+    priority: number | null;
+    visibility: Binding["visibility"];
+    viaPath: string;
+  } | null;
+}
+
 export interface ResourceView extends Omit<Asset, "states"> {
   assetId: string;
   health: Health;
@@ -37,6 +63,7 @@ export interface ResourceView extends Omit<Asset, "states"> {
   pluginPackageId: string | null;
   diagnosisKinds: DiagnosisKind[];
   states: ResourceLifecycle;
+  lineage: ResourceLineage;
   reason: string;
   reasonEn: string;
 }
@@ -51,8 +78,33 @@ export interface Issue {
   action: string;
   actionEn: string;
   assetIds: string[];
+  kind?: DiagnosisKind | "activation-uncertain" | "plugin-lifecycle" | "scan-warning";
+  confidence?: Confidence;
+  evidenceCount?: number;
   type?: AssetType;
   owner?: Owner;
+}
+
+export interface StateCounts {
+  true: number;
+  false: number;
+  unknown: number;
+}
+
+export interface EvidenceLedger {
+  installations: {
+    total: number;
+    present: StateCounts;
+    valid: StateCounts;
+  };
+  bindings: {
+    total: number;
+    visible: number;
+    shadowed: number;
+    visibilityUnknown: number;
+    enabled: StateCounts;
+    loaded: StateCounts;
+  };
 }
 
 export interface SystemView {
@@ -60,6 +112,25 @@ export interface SystemView {
   label: string;
   health: Health;
   resources: number;
+  direct: number;
+  inherited: number;
+  bindings: {
+    total: number;
+    visible: number;
+    shadowed: number;
+    disabled: number;
+    visibilityUnknown: number;
+  };
+  states: {
+    enabled: StateCounts;
+    loaded: StateCounts;
+  };
+  diagnoses: {
+    warning: number;
+    attention: number;
+    info: number;
+    healthy: number;
+  };
   byType: Partial<Record<AssetType, number>>;
   resourceSurfaceWeight: number;
   byTypeSurfaceWeight: Partial<Record<AssetType, number>>;
@@ -89,6 +160,7 @@ export interface AtlasSnapshot {
   plugins: PluginView[];
   diagnoses: Diagnosis[];
   issues: Issue[];
+  evidenceLedger: EvidenceLedger;
   stats: {
     effective: number;
     direct: number;
@@ -194,6 +266,14 @@ function stateSummary(state: StateAssessment): string {
   return state.value === "unknown" ? "unknown" : String(state.value);
 }
 
+function countStates(states: StateAssessment[]): StateCounts {
+  return {
+    true: states.filter((state) => state.value === true).length,
+    false: states.filter((state) => state.value === false).length,
+    unknown: states.filter((state) => state.value === "unknown").length
+  };
+}
+
 function pluginReason(plugin: PluginPackage, language: "zh" | "en"): string {
   const values = `bundled=${stateSummary(plugin.bundled)}, installed=${stateSummary(plugin.installed)}, enabled=${stateSummary(plugin.enabled)}, loaded=${stateSummary(plugin.loaded)}`;
   return language === "zh" ? `Plugin package 生命周期：${values}` : `Plugin package lifecycle: ${values}`;
@@ -206,6 +286,7 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
   const bindings = applicableBindings(atlas, projectPath);
   const bindingById = new Map(bindings.map((binding) => [binding.id, binding]));
   const installationById = new Map(atlas.installations.map((installation) => [installation.id, installation]));
+  const canonicalById = new Map(atlas.canonicalSources.map((canonical) => [canonical.id, canonical]));
   const consumerById = new Map(atlas.consumers.map((consumer) => [consumer.id, consumer]));
   const pluginById = new Map(atlas.pluginPackages.map((plugin) => [plugin.id, plugin]));
   const assetByBinding = new Map<string, Asset>();
@@ -213,6 +294,8 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     for (const bindingId of asset.graph.bindingIds) assetByBinding.set(bindingId, asset);
   }
   const shadowed = shadowedBindings(atlas, bindings, assetByBinding);
+  const bindingIsShadowed = (binding: Binding): boolean =>
+    binding.visibility === "shadowed" || Boolean(binding.shadowedByBindingId) || shadowed.has(binding.id);
   const diagnoses = evaluateDiagnoses(atlas, projectPath);
 
   const diagnosesByInstallation = new Map<string, Diagnosis[]>();
@@ -251,7 +334,8 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
         ...(binding ? diagnosesByBinding.get(binding.id) ?? [] : [])
       ].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
       const diagnosisKinds = [...new Set(relatedDiagnoses.map((item) => item.kind))];
-      const isShadowed = Boolean(binding && (binding.visibility === "shadowed" || binding.shadowedByBindingId || shadowed.has(binding.id)));
+      const canonical = asset.graph.canonicalSourceId ? canonicalById.get(asset.graph.canonicalSourceId) ?? null : null;
+      const isShadowed = Boolean(binding && bindingIsShadowed(binding));
       const visible = Boolean(binding && binding.visibility === "visible" && binding.enabled.value !== false && valid.value !== false && !isShadowed);
       const effective = visible;
       const diagnosisHealth = relatedDiagnoses.some((item) => item.severity === "warning")
@@ -308,6 +392,31 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
         pluginPackageId: asset.graph.pluginPackageId,
         diagnosisKinds,
         states,
+        lineage: {
+          canonical: canonical ? {
+            id: canonical.id,
+            sourceType: canonical.sourceType,
+            source: canonical.source,
+            sourceUrl: canonical.sourceUrl,
+            sourcePath: canonical.sourcePath,
+            confidence: canonical.confidence
+          } : null,
+          installation: installation ? {
+            id: installation.id,
+            role: installation.role,
+            physicalId: installation.physicalId,
+            contentHash: installation.contentHash,
+            hashAlgorithm: installation.hashAlgorithm,
+            locationCount: installation.locations.length
+          } : null,
+          binding: binding ? {
+            id: binding.id,
+            discovery: binding.discovery,
+            priority: binding.priority,
+            visibility: isShadowed ? "shadowed" : binding.visibility,
+            viaPath: binding.viaPath
+          } : null
+        },
         reason,
         reasonEn
       });
@@ -334,6 +443,9 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
       action: item.action,
       actionEn: item.actionEn,
       assetIds: matching.map((resource) => resource.id),
+      kind: item.kind,
+      confidence: item.confidence,
+      evidenceCount: item.evidenceIds.length,
       type: types.length === 1 ? types[0] : undefined,
       owner: owners.length === 1 ? owners[0] : undefined
     };
@@ -351,6 +463,9 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
       action: "接入对应运行时配置解析或 session 证据后再判断；当前不要声称实际影响。",
       actionEn: "Add runtime configuration or session evidence before drawing a conclusion; do not claim actual influence yet.",
       assetIds: uncertainMcp.map((resource) => resource.id),
+      kind: "activation-uncertain",
+      confidence: "unknown",
+      evidenceCount: 0,
       type: "mcp"
     });
   }
@@ -382,6 +497,9 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
       action: "按需查看 package manifest 和各状态证据；catalog/bundled 不等于 installed。",
       actionEn: "Inspect package manifests and state evidence as needed; catalog or bundled does not mean installed.",
       assetIds: pluginResourceIds,
+      kind: "plugin-lifecycle",
+      confidence: "confirmed",
+      evidenceCount: plugins.reduce((sum, plugin) => sum + plugin.bundled.evidenceIds.length + plugin.installed.evidenceIds.length + plugin.enabled.evidenceIds.length + plugin.loaded.evidenceIds.length, 0),
       type: "plugin"
     });
   }
@@ -395,22 +513,48 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     detailEn: warning,
     action: "修正读取权限或显式指定项目根后重新生成。",
     actionEn: "Fix read access or explicitly set the project root, then regenerate.",
-    assetIds: []
+    assetIds: [],
+    kind: "scan-warning",
+    confidence: "confirmed",
+    evidenceCount: 0
   }));
 
   const effectiveResources = resources.filter((resource) => resource.effective);
   const directResources = effectiveResources.filter((resource) => resource.consumerId && consumerById.get(resource.consumerId)?.scope === "project");
   const inheritedResources = effectiveResources.filter((resource) => resource.consumerId && consumerById.get(resource.consumerId)?.scope === "global");
+  const applicableConsumers = atlas.consumers.filter((consumer) => consumer.scope === "global" || (projectPath !== null && consumer.projectPath === projectPath));
   const systems = (["codex", "claude", "hermes"] as RuntimeName[]).map((consumer): SystemView | null => {
     const items = effectiveResources.filter((resource) => resource.consumer === consumer);
-    if (!items.length) return null;
+    const consumerIds = new Set(applicableConsumers.filter((item) => item.runtime === consumer).map((item) => item.id));
+    const runtimeBindings = bindings.filter((binding) => consumerIds.has(binding.consumerId));
+    if (!items.length && !runtimeBindings.length && !consumerIds.size) return null;
     const byType: Partial<Record<AssetType, number>> = {};
     items.forEach((item) => { byType[item.type] = (byType[item.type] ?? 0) + 1; });
+    const runtimeDiagnoses = diagnoses.filter((diagnosis) => diagnosis.consumerId !== null && consumerIds.has(diagnosis.consumerId));
     return {
       consumer,
       label: runtimeLabels[consumer],
       health: worstHealth(items.map((item) => item.health)),
       resources: items.length,
+      direct: items.filter((item) => item.consumerId && consumerById.get(item.consumerId)?.scope === "project").length,
+      inherited: items.filter((item) => item.consumerId && consumerById.get(item.consumerId)?.scope === "global").length,
+      bindings: {
+        total: runtimeBindings.length,
+        visible: items.length,
+        shadowed: runtimeBindings.filter(bindingIsShadowed).length,
+        disabled: runtimeBindings.filter((binding) => binding.enabled.value === false).length,
+        visibilityUnknown: runtimeBindings.filter((binding) => binding.visibility === "unknown").length
+      },
+      states: {
+        enabled: countStates(runtimeBindings.map((binding) => binding.enabled)),
+        loaded: countStates(runtimeBindings.map((binding) => binding.loaded))
+      },
+      diagnoses: {
+        warning: runtimeDiagnoses.filter((diagnosis) => diagnosis.severity === "warning").length,
+        attention: runtimeDiagnoses.filter((diagnosis) => diagnosis.severity === "attention").length,
+        info: runtimeDiagnoses.filter((diagnosis) => diagnosis.severity === "info").length,
+        healthy: runtimeDiagnoses.filter((diagnosis) => diagnosis.severity === "healthy").length
+      },
       byType,
       resourceSurfaceWeight: Math.max(1, items.length),
       byTypeSurfaceWeight: { ...byType },
@@ -459,6 +603,22 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     pluginLoaded: plugins.filter((plugin) => plugin.loaded.value === true).length
   };
 
+  const evidenceLedger: EvidenceLedger = {
+    installations: {
+      total: atlas.installations.length,
+      present: countStates(atlas.installations.map((installation) => installation.present)),
+      valid: countStates(atlas.installations.map((installation) => installation.valid))
+    },
+    bindings: {
+      total: bindings.length,
+      visible: effectiveResources.length,
+      shadowed: bindings.filter(bindingIsShadowed).length,
+      visibilityUnknown: bindings.filter((binding) => binding.visibility === "unknown").length,
+      enabled: countStates(bindings.map((binding) => binding.enabled)),
+      loaded: countStates(bindings.map((binding) => binding.loaded))
+    }
+  };
+
   return {
     schemaVersion: atlas.schemaVersion,
     generatedAt: atlas.generatedAt,
@@ -469,6 +629,7 @@ export function buildSnapshot(atlas: Atlas, selectedProjectPath?: string | null)
     plugins,
     diagnoses,
     issues,
+    evidenceLedger,
     stats
   };
 }
@@ -540,8 +701,16 @@ export function renderContextMarkdown(
   if (!snapshot.systems.length) lines.push(zh ? "- 当前范围没有 runtime-visible binding。" : "- No runtime-visible binding exists in this scope.");
   snapshot.systems.forEach((system) => {
     const mix = Object.entries(system.byType).map(([type, count]) => `${inlineData(type)} ${count}`).join(zh ? "，" : ", ");
-    lines.push(`- ${inlineData(system.label)}: ${system.resources} ${zh ? "项资源" : "resources"}; loaded-confirmed ${system.loadedConfirmed}; ${mix}`);
+    lines.push(`- ${inlineData(system.label)}: visible ${system.bindings.visible}; enabled=true ${system.states.enabled.true}, false ${system.states.enabled.false}, unknown ${system.states.enabled.unknown}; loaded=true ${system.states.loaded.true}, false ${system.states.loaded.false}, unknown ${system.states.loaded.unknown}; ${mix}`);
   });
+  const ledger = snapshot.evidenceLedger;
+  lines.push("", zh ? "## 证据账本" : "## Evidence ledger", "",
+    zh
+      ? `- Installation 口径 ${ledger.installations.total}：present true ${ledger.installations.present.true} / false ${ledger.installations.present.false} / unknown ${ledger.installations.present.unknown}；valid true ${ledger.installations.valid.true} / false ${ledger.installations.valid.false} / unknown ${ledger.installations.valid.unknown}。`
+      : `- Installation denominator ${ledger.installations.total}: present true ${ledger.installations.present.true} / false ${ledger.installations.present.false} / unknown ${ledger.installations.present.unknown}; valid true ${ledger.installations.valid.true} / false ${ledger.installations.valid.false} / unknown ${ledger.installations.valid.unknown}.`,
+    zh
+      ? `- 当前范围 Binding 口径 ${ledger.bindings.total}：visible ${ledger.bindings.visible} / shadowed ${ledger.bindings.shadowed} / visibility unknown ${ledger.bindings.visibilityUnknown}；enabled true ${ledger.bindings.enabled.true} / false ${ledger.bindings.enabled.false} / unknown ${ledger.bindings.enabled.unknown}；loaded true ${ledger.bindings.loaded.true} / false ${ledger.bindings.loaded.false} / unknown ${ledger.bindings.loaded.unknown}。`
+      : `- Current-scope binding denominator ${ledger.bindings.total}: visible ${ledger.bindings.visible} / shadowed ${ledger.bindings.shadowed} / visibility unknown ${ledger.bindings.visibilityUnknown}; enabled true ${ledger.bindings.enabled.true} / false ${ledger.bindings.enabled.false} / unknown ${ledger.bindings.enabled.unknown}; loaded true ${ledger.bindings.loaded.true} / false ${ledger.bindings.loaded.false} / unknown ${ledger.bindings.loaded.unknown}.`);
   lines.push("", zh ? "## 诊断与不确定项" : "## Diagnoses and uncertainty", "", omittedLine(language, shownIssues.length, snapshot.issues.length));
   if (!shownIssues.length) lines.push(zh ? "- 未发现诊断项。" : "- No diagnostic item was found.");
   shownIssues.forEach((issue) => lines.push(`- [${issue.severity}] ${inlineData(zh ? issue.title : issue.titleEn)}: ${inlineData(zh ? issue.detail : issue.detailEn)} ${zh ? "下一步" : "Next"}: ${inlineData(zh ? issue.action : issue.actionEn)}`));

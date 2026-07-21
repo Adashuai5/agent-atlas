@@ -57,8 +57,12 @@ an installation or loading claim.
 
 One semantic model backs two native paths:
 
-- Human: bilingual Chinese/English conclusions, health overview, high-signal
-  diagnoses, evidence, and resource drill-down.
+- Human: a bilingual Chinese/English Diagnosis workspace with an
+  evidence-bounded verdict, evidence ledger, diagnosis/evidence queue, and
+  runtime matrix; Relations traces alias, mirror, redundant, and conflict
+  facts through the provenance/runtime chain; Plugins keeps package states
+  independent; Resource audit exposes realpath, inode, hash, state, and graph
+  evidence.
 - AI: compact Markdown, complete Markdown, and structured JSON with scope,
   tri-state status, confidence, evidence, and explicit interpretation rules.
 
@@ -68,10 +72,12 @@ project. A project without direct AI configuration stays visible and is shown
 as inheriting global resources; inheritance is not described as confirmed
 loading without runtime evidence.
 
-Heatmap area represents `resourceSurfaceWeight`, a visual weight for the size
-of the available resource surface. Color represents diagnosed
-health. Area must not be labeled influence, usage, effectiveness, or loading.
-Exact counts and evidence belong in tooltips and detail views.
+The Diagnosis view uses compact resource-surface distribution bars only as
+secondary context. They report runtime-visible scale per consumer plus a
+separate non-plugin inventory count; they do not encode influence, usage,
+effectiveness, enablement, or loading. Exact claims come from the evidence
+ledger, runtime matrix, and drill-down. `resourceSurfaceWeight` remains
+display-only model metadata rather than an impact claim.
 
 Compact Markdown may cap long lists, but it must report the exact omitted
 count. Scope/language-specific full Markdown files and `atlas.json` provide

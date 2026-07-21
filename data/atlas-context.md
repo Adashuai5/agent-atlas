@@ -1,7 +1,7 @@
 # Agent Atlas Context
 
 Schema: v2
-Generated: 2026\-07\-20T14:42:24\.913Z
+Generated: 2026\-07\-20T17:08:29\.212Z
 Scope: Global environment
 Health: healthy
 
@@ -12,9 +12,14 @@ Health: healthy
 
 ## Runtime consumers
 
-- Codex: 15 resources; loaded-confirmed 0; skill 14, config 1
-- Claude: 16 resources; loaded-confirmed 0; config 3, skill 13
-- Hermes: 120 resources; loaded-confirmed 0; skill 117, config 2, memory 1
+- Codex: visible 15; enabled=true 0, false 0, unknown 15; loaded=true 0, false 0, unknown 15; skill 14, config 1
+- Claude: visible 16; enabled=true 0, false 0, unknown 16; loaded=true 0, false 0, unknown 16; config 3, skill 13
+- Hermes: visible 120; enabled=true 0, false 0, unknown 120; loaded=true 0, false 0, unknown 120; skill 117, config 2, memory 1
+
+## Evidence ledger
+
+- Installation denominator 522: present true 522 / false 0 / unknown 0; valid true 520 / false 0 / unknown 2.
+- Current-scope binding denominator 151: visible 151 / shadowed 0 / visibility unknown 0; enabled true 0 / false 0 / unknown 151; loaded true 0 / false 0 / unknown 151.
 
 ## Diagnoses and uncertainty
 

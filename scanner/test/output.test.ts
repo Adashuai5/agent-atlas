@@ -75,6 +75,31 @@ function resource(index: number, resourcePath = `/test-home/.agents/skills/skill
       enabled: assessment(true),
       loaded: assessment("unknown")
     },
+    lineage: {
+      canonical: {
+        id: `canonical:${index}`,
+        sourceType: "github",
+        source: "fixture/example",
+        sourceUrl: "https://example.test/fixture.git",
+        sourcePath: `skills/skill-${index}/SKILL.md`,
+        confidence: "confirmed"
+      },
+      installation: {
+        id: installationId,
+        role: "primary",
+        physicalId: `1:${index + 1}`,
+        contentHash: `hash-${index}`,
+        hashAlgorithm: "sha256-normalized-directory-v1",
+        locationCount: 1
+      },
+      binding: {
+        id: bindingId,
+        discovery: "default-root",
+        priority: 100,
+        visibility: "visible",
+        viaPath: resourcePath
+      }
+    },
     reason: "Enabled and visible through a Codex binding.",
     reasonEn: "Enabled and visible through a Codex binding."
   };
@@ -101,6 +126,20 @@ function system(resourceCount: number): SystemView {
     label: "Codex",
     health: "healthy",
     resources: resourceCount,
+    direct: 0,
+    inherited: resourceCount,
+    bindings: {
+      total: resourceCount,
+      visible: resourceCount,
+      shadowed: 0,
+      disabled: 0,
+      visibilityUnknown: 0
+    },
+    states: {
+      enabled: { true: resourceCount, false: 0, unknown: 0 },
+      loaded: { true: 0, false: 0, unknown: resourceCount }
+    },
+    diagnoses: { warning: 0, attention: 0, info: 0, healthy: 0 },
     byType: { skill: resourceCount },
     resourceSurfaceWeight: Math.max(1, resourceCount),
     byTypeSurfaceWeight: { skill: resourceCount },
@@ -129,6 +168,21 @@ function snapshot(resourceCount: number, options: { plugins?: PluginView[]; reso
     plugins,
     diagnoses: [],
     issues: [],
+    evidenceLedger: {
+      installations: {
+        total: resourceCount,
+        present: { true: resourceCount, false: 0, unknown: 0 },
+        valid: { true: resourceCount, false: 0, unknown: 0 }
+      },
+      bindings: {
+        total: resourceCount,
+        visible: resourceCount,
+        shadowed: 0,
+        visibilityUnknown: 0,
+        enabled: { true: resourceCount, false: 0, unknown: 0 },
+        loaded: { true: 0, false: 0, unknown: resourceCount }
+      }
+    },
     stats: {
       effective: resourceCount,
       direct: 0,
@@ -237,6 +291,108 @@ test("HTML labels inactive resources as not visible rather than disabled", () =>
   assert.ok(html.includes('inactive:"不可见"'));
   assert.ok(html.includes('inactive:"Not visible"'));
   assert.doesNotMatch(html, /inactive:"(?:未启用|Inactive)"/);
+});
+
+test("dashboard is diagnosis-first and removes the inventory treemap from the primary view", () => {
+  const fixture = snapshot(2);
+  fixture.resources.forEach((item) => {
+    item.states.enabled = assessment("unknown");
+    item.states.loaded = assessment("unknown");
+  });
+  fixture.systems[0]!.states.enabled = { true: 0, false: 0, unknown: 2 };
+  fixture.systems[0]!.states.loaded = { true: 0, false: 0, unknown: 2 };
+  fixture.evidenceLedger.bindings.enabled = { true: 0, false: 0, unknown: 2 };
+  fixture.evidenceLedger.bindings.loaded = { true: 0, false: 0, unknown: 2 };
+  const html = renderHtml(fixture, [fixture]);
+
+  assert.ok(html.includes('id="evidenceGrid"'));
+  assert.ok(html.includes('id="runtimeTable"'));
+  assert.ok(html.includes('id="queueList"'));
+  assert.ok(html.includes('id="view-relations"'));
+  assert.ok(html.includes('id="view-plugins"'));
+  assert.ok(html.includes('id="view-resources"'));
+  assert.ok(html.includes("No confirmed structural conflict"));
+  assert.ok(html.includes("Runtime evidence incomplete"));
+  assert.doesNotMatch(html, /mapBoard|systemTiles|class="tile/);
+});
+
+test("dashboard payload retains lineage, relation references, evidence counts, and package lifecycle", () => {
+  const fixture = snapshot(1, { plugins: [unknownPlugin()] });
+  fixture.resources[0]!.diagnosisKinds = ["mirror"];
+  fixture.issues.push({
+    id: "diagnosis:mirror",
+    kind: "mirror",
+    severity: "info",
+    confidence: "confirmed",
+    evidenceCount: 3,
+    title: "镜像关系",
+    titleEn: "Mirror relationship",
+    detail: "内容相同。",
+    detailEn: "Content matches.",
+    action: "无需处理。",
+    actionEn: "No action needed.",
+    assetIds: [fixture.resources[0]!.id]
+  });
+  fixture.diagnoses.push({
+    id: "diagnosis:mirror",
+    kind: "mirror",
+    severity: "info",
+    confidence: "confirmed",
+    consumerId: null,
+    canonicalSourceIds: [fixture.resources[0]!.canonicalSourceId!],
+    installationIds: [fixture.resources[0]!.installationId!],
+    bindingIds: [fixture.resources[0]!.bindingId!],
+    pluginPackageIds: [],
+    title: "镜像关系",
+    titleEn: "Mirror relationship",
+    detail: "内容相同。",
+    detailEn: "Content matches.",
+    action: "无需处理。",
+    actionEn: "No action needed.",
+    evidenceIds: ["evidence:1", "evidence:2", "evidence:3"]
+  });
+  const html = renderHtml(fixture, [fixture]);
+
+  assert.ok(html.includes('"source":"fixture/example"'));
+  assert.ok(html.includes('"diagnosisKinds":["mirror"]'));
+  assert.ok(html.includes('"diagnoses":[{"id":"diagnosis:mirror"'));
+  assert.ok(html.includes('"plugins":[{"id":"plugin:catalog-only"'));
+  assert.ok(html.includes('"evidenceCount":3'));
+  assert.ok(html.includes('canonical source → installation/location → binding/consumer'));
+});
+
+test("project dashboard delta preserves ordinary non-visible inventory rows", () => {
+  const globalScope = snapshot(2);
+  const projectScope = snapshot(2);
+  projectScope.project = { name: "fixture-project", path: "/fixture/project" };
+  projectScope.resources[1]!.effective = false;
+  projectScope.resources[1]!.visible = false;
+  projectScope.resources[1]!.health = "inactive";
+  projectScope.resources[1]!.diagnosisKinds = [];
+  const html = renderHtml(globalScope, [globalScope, projectScope]);
+  const payloadMatch = html.match(/const scopeSnapshots = (\[[\s\S]*?\]);\n    const baseResourceMap/);
+
+  assert.ok(payloadMatch);
+  const payload = JSON.parse(payloadMatch[1]!);
+  assert.deepEqual(payload[1].resourceIds, projectScope.resources.map((item) => item.id));
+  assert.ok(payload[1].resources.some((item: { id: string }) => item.id === projectScope.resources[1]!.id));
+});
+
+test("Markdown exposes state denominators instead of presenting lifecycle states as one funnel", () => {
+  const fixture = snapshot(2);
+  fixture.evidenceLedger.bindings.enabled = { true: 0, false: 0, unknown: 2 };
+  fixture.evidenceLedger.bindings.loaded = { true: 0, false: 0, unknown: 2 };
+  fixture.systems[0]!.states.enabled = { true: 0, false: 0, unknown: 2 };
+  fixture.systems[0]!.states.loaded = { true: 0, false: 0, unknown: 2 };
+
+  const english = renderContextMarkdown(fixture, "en");
+  const chinese = renderContextMarkdown(fixture, "zh");
+
+  assert.ok(english.includes("## Evidence ledger"));
+  assert.ok(english.includes("Current-scope binding denominator 2"));
+  assert.ok(english.includes("enabled true 0 / false 0 / unknown 2"));
+  assert.ok(chinese.includes("## 证据账本"));
+  assert.ok(chinese.includes("当前范围 Binding 口径 2"));
 });
 
 test("hostile-looking closing script text remains path data in Markdown", () => {

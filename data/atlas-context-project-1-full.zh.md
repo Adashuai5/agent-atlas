@@ -1,7 +1,7 @@
 # Agent Atlas 上下文
 
 Schema: v2
-生成时间: 2026\-07\-20T14:42:24\.913Z
+生成时间: 2026\-07\-20T17:08:29\.212Z
 当前范围: /Users/ada/Desktop/下一程
 健康状态: healthy
 
@@ -12,9 +12,14 @@ Schema: v2
 
 ## Runtime consumers
 
-- Codex: 15 项资源; loaded-confirmed 0; skill 14，config 1
-- Claude: 19 项资源; loaded-confirmed 0; config 3，skill 15，memory 1
-- Hermes: 120 项资源; loaded-confirmed 0; skill 117，config 2，memory 1
+- Codex: visible 15; enabled=true 0, false 0, unknown 15; loaded=true 0, false 0, unknown 15; skill 14，config 1
+- Claude: visible 19; enabled=true 0, false 0, unknown 20; loaded=true 0, false 0, unknown 20; config 3，skill 15，memory 1
+- Hermes: visible 120; enabled=true 0, false 0, unknown 120; loaded=true 0, false 0, unknown 120; skill 117，config 2，memory 1
+
+## 证据账本
+
+- Installation 口径 522：present true 522 / false 0 / unknown 0；valid true 520 / false 0 / unknown 2。
+- 当前范围 Binding 口径 155：visible 154 / shadowed 1 / visibility unknown 0；enabled true 0 / false 0 / unknown 155；loaded true 0 / false 0 / unknown 155。
 
 ## 诊断与不确定项
 

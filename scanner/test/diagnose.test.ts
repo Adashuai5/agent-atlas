@@ -223,7 +223,7 @@ function atlasGraph(input: {
   };
 }
 
-test("a shadowed binding remains inventory and is not effective", () => {
+test("a shadowed binding remains inventory while its consumer stays visible in the runtime matrix", () => {
   const stored = installation("shadowed");
   const codex = consumer("consumer:codex", "codex");
   const shadowed = binding("binding:shadowed", stored.id, codex.id, {
@@ -242,7 +242,70 @@ test("a shadowed binding remains inventory and is not effective", () => {
   assert.ok(row);
   assert.equal(row.visible, false);
   assert.equal(row.effective, false);
-  assert.equal(snapshot.systems.some((system) => system.consumer === "codex"), false);
+  const system = snapshot.systems.find((item) => item.consumer === "codex");
+  assert.ok(system);
+  assert.equal(system.resources, 0);
+  assert.equal(system.bindings.total, 1);
+  assert.equal(system.bindings.shadowed, 1);
+  assert.deepEqual(system.states.enabled, { true: 1, false: 0, unknown: 0 });
+});
+
+test("project cascade projects derived priority shadowing into resources, systems, and the evidence ledger", () => {
+  const inherited = installation("inherited", { name: "settings.local.json" });
+  const direct = installation("direct", { name: "settings.local.json", scope: "project" });
+  const globalClaude = consumer("consumer:claude:global", "claude");
+  const projectClaude = consumer("consumer:claude:project", "claude");
+  projectClaude.scope = "project";
+  projectClaude.projectPath = "/fixture/project";
+  const inheritedBinding = binding("binding:inherited", inherited.id, globalClaude.id, {
+    exposedName: "settings.local.json",
+    priority: 100
+  });
+  const directBinding = binding("binding:direct", direct.id, projectClaude.id, {
+    exposedName: "settings.local.json",
+    priority: 200
+  });
+  directBinding.scope = "project";
+  directBinding.projectPath = "/fixture/project";
+  const projectAsset = asset(direct, []);
+  projectAsset.type = "project";
+  projectAsset.name = "project";
+  projectAsset.path = "/fixture/project";
+  projectAsset.projectPath = "/fixture/project";
+  projectAsset.scope = "project";
+  const inheritedAsset = asset(inherited, [inheritedBinding.id]);
+  const directResourceAsset = asset(direct, [directBinding.id]);
+  directResourceAsset.projectPath = "/fixture/project";
+  const atlas = atlasGraph({
+    installations: [inherited, direct],
+    consumers: [globalClaude, projectClaude],
+    bindings: [inheritedBinding, directBinding],
+    assets: [inheritedAsset, directResourceAsset]
+  });
+  atlas.projects = [projectAsset];
+
+  const snapshot = buildSnapshot(atlas, "/fixture/project");
+  const inheritedRow = snapshot.resources.find((resource) => resource.bindingId === inheritedBinding.id);
+  const directRow = snapshot.resources.find((resource) => resource.bindingId === directBinding.id);
+  const system = snapshot.systems.find((item) => item.consumer === "claude");
+
+  assert.ok(inheritedRow);
+  assert.ok(directRow);
+  assert.ok(system);
+  assert.equal(inheritedRow.effective, false);
+  assert.equal(inheritedRow.lineage.binding?.visibility, "shadowed");
+  assert.equal(directRow.effective, true);
+  assert.deepEqual(system.bindings, {
+    total: 2,
+    visible: 1,
+    shadowed: 1,
+    disabled: 0,
+    visibilityUnknown: 0
+  });
+  assert.equal(system.resources, 1);
+  assert.equal(snapshot.stats.effective, 1);
+  assert.equal(snapshot.evidenceLedger.bindings.visible, 1);
+  assert.equal(snapshot.evidenceLedger.bindings.shadowed, 1);
 });
 
 test("visible binding with unknown enabled state enters the resource surface without coercion", () => {
@@ -269,6 +332,74 @@ test("visible binding with unknown enabled state enters the resource surface wit
   assert.equal(snapshot.stats.effective, 1);
   assert.equal(snapshot.stats.enabled, 0);
   assert.equal(snapshot.systems.find((system) => system.consumer === "codex")?.resources, 1);
+});
+
+test("evidence ledger keeps installation and binding denominators separate", () => {
+  const stored = installation("ledger", { valid: true });
+  const codex = consumer("consumer:codex", "codex");
+  const visible = binding("binding:visible", stored.id, codex.id, {
+    enabled: "unknown",
+    loaded: "unknown",
+    visibility: "visible"
+  });
+  const disabled = binding("binding:disabled", stored.id, codex.id, {
+    enabled: false,
+    loaded: false,
+    visibility: "shadowed"
+  });
+  const snapshot = buildSnapshot(atlasGraph({
+    installations: [stored],
+    consumers: [codex],
+    bindings: [visible, disabled],
+    assets: [asset(stored, [visible.id, disabled.id])]
+  }), null);
+
+  assert.deepEqual(snapshot.evidenceLedger.installations, {
+    total: 1,
+    present: { true: 1, false: 0, unknown: 0 },
+    valid: { true: 1, false: 0, unknown: 0 }
+  });
+  assert.deepEqual(snapshot.evidenceLedger.bindings, {
+    total: 2,
+    visible: 1,
+    shadowed: 1,
+    visibilityUnknown: 0,
+    enabled: { true: 0, false: 1, unknown: 1 },
+    loaded: { true: 0, false: 1, unknown: 1 }
+  });
+});
+
+test("resource lineage projects canonical provenance through installation and binding", () => {
+  const canonical = canonicalSource("canonical:upstream", "lineage-skill");
+  canonical.sourceType = "github";
+  canonical.source = "owner/repository";
+  canonical.sourceUrl = "https://example.test/owner/repository.git";
+  canonical.sourcePath = "skills/lineage-skill/SKILL.md";
+  canonical.confidence = "confirmed";
+  const stored = installation("lineage", {
+    name: "lineage-skill",
+    canonicalSourceId: canonical.id
+  });
+  const codex = consumer("consumer:codex", "codex");
+  const visible = binding("binding:lineage", stored.id, codex.id, {
+    enabled: "unknown",
+    loaded: "unknown"
+  });
+  const snapshot = buildSnapshot(atlasGraph({
+    installations: [stored],
+    canonicalSources: [canonical],
+    consumers: [codex],
+    bindings: [visible],
+    assets: [asset(stored, [visible.id])]
+  }), null);
+  const row = snapshot.resources.find((resource) => resource.bindingId === visible.id);
+
+  assert.ok(row);
+  assert.equal(row.lineage.canonical?.source, "owner/repository");
+  assert.equal(row.lineage.canonical?.confidence, "confirmed");
+  assert.equal(row.lineage.installation?.contentHash, stored.contentHash);
+  assert.equal(row.lineage.binding?.discovery, "default-root");
+  assert.equal(row.lineage.binding?.visibility, "visible");
 });
 
 test("an explicitly disabled binding remains distinct from missing binding evidence", () => {
