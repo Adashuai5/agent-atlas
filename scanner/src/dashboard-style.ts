@@ -60,10 +60,13 @@ h1 { margin:0; font-size:18px; line-height:1.15; letter-spacing:-.015em; }
 .queueItem { width:100%; min-height:76px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:11px; align-items:start; border:0; border-bottom:1px solid var(--line); background:#fff; color:var(--ink); padding:12px 10px; text-align:left; }
 .queueItem:last-child { border-bottom:0; }
 .queueItem:hover { background:var(--surface-subtle); border-radius:9px; }
+.queueItem.static { cursor:default; opacity:1; }
+.queueItem.static:hover { background:#fff; border-radius:0; }
 .queueIcon { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; background:var(--soft); color:var(--tone); font-size:13px; font-weight:900; }
 .queueItem strong { display:block; font-size:12px; }
 .queueItem p { margin:4px 0 0; color:var(--muted); font-size:11px; }
 .queueMeta { color:var(--tone); font-size:10px; font-weight:800; text-transform:uppercase; }
+.queueMeta small { display:block; margin-top:3px; color:var(--muted); font-size:8px; font-weight:600; text-transform:none; white-space:nowrap; }
 .zeroState { padding:22px 18px; text-align:center; color:var(--muted); }
 .zeroState strong { display:block; margin-bottom:4px; color:var(--ink); }
 .runtimeTable { padding:8px 14px 14px; }
@@ -73,7 +76,7 @@ h1 { margin:0; font-size:18px; line-height:1.15; letter-spacing:-.015em; }
 .runtimeRow:hover { background:var(--surface-subtle); }
 .runtimeName strong,.runtimeName span { display:block; }
 .runtimeName span { margin-top:2px; color:var(--muted); font-size:10px; }
-.runtimeMetric strong { display:block; font-size:16px; }
+.runtimeMetric strong { display:block; font-size:14px; white-space:nowrap; }
 .runtimeMetric span { color:var(--muted); font-size:10px; }
 .runtimeStatus { display:inline-flex; align-items:center; gap:6px; width:max-content; border-radius:999px; background:var(--soft); color:var(--tone); padding:5px 8px; font-size:10px; font-weight:800; }
 .runtimeStatus i { width:6px; height:6px; border-radius:50%; background:var(--tone); }
@@ -174,7 +177,8 @@ details[open] .chevron { transform:rotate(90deg); }
   .evidenceGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .primaryGrid,.relationLayout { grid-template-columns:1fr; }
   .pluginHeader,.pluginRow { grid-template-columns:minmax(160px,1fr) 88px repeat(4,76px); }
-  .manifest { display:none; }
+  .manifestHeader { display:none; }
+  .pluginRow .manifest { grid-column:1 / -1; padding:0 0 9px; }
 }
 @media (max-width:720px) {
   .app { padding:10px 10px 28px; }
@@ -200,7 +204,7 @@ details[open] .chevron { transform:rotate(90deg); }
   .pluginHeader { display:none; }
   .pluginList { display:grid; gap:9px; padding:11px; }
   .pluginRow { grid-template-columns:1fr 1fr; gap:8px; border:1px solid var(--line); border-radius:12px; padding:11px; }
-  .pluginName { grid-column:1 / -1; }
+  .pluginName,.pluginRow .manifest { grid-column:1 / -1; }
   .resourceSummary { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; }
   .resourceOwner,.resourceConsumer,.stateStrip { grid-column:1 / -1; }
   .chain { grid-template-columns:1fr; gap:16px; }
@@ -210,6 +214,9 @@ details[open] .chevron { transform:rotate(90deg); }
 }
 @media (max-width:420px) {
   .scopeSelect { max-width:108px; }
+  .topActions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .scanMeta { grid-column:1 / -1; margin:0; }
+  .topButton { width:100%; }
   .hero { padding:18px; }
   .heroSignals,.evidenceGrid,.summaryGrid { grid-template-columns:1fr 1fr; }
   .heroSignal { min-height:96px; padding:12px; }
@@ -220,5 +227,11 @@ details[open] .chevron { transform:rotate(90deg); }
   .pluginKpi:first-child { grid-column:auto; }
   .panelHead { display:block; }
   .panelHead .textButton { margin-top:8px; }
+  .projectMode .brand { flex-wrap:wrap; }
+  .projectMode .scopeControls { width:calc(100% - 51px); margin-left:51px; }
+  .projectMode .scopeSelect { flex:1; max-width:none; }
+  .modalHead { align-items:flex-start; flex-direction:column; }
+  .modalActions { width:100%; flex-wrap:wrap; }
+  .modalActions .fullContextLink,.modalActions button { flex:1 1 auto; justify-content:center; }
 }
 `;

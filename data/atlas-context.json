@@ -1,13 +1,13 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-20T17:08:29.212Z",
+  "generatedAt": "2026-07-22T16:41:27.881Z",
   "project": null,
   "conclusion": {
     "health": "healthy",
     "title": "本机检测到 3 个运行时 consumer",
     "titleEn": "3 runtime consumers detected on this machine",
-    "detail": "当前资源面可见 151 项；enabled-confirmed 0，loaded-confirmed 0。另有 382 项库存，资源面积不代表实际使用。",
-    "detailEn": "151 resources are visible on the resource surface; enabled-confirmed 0, loaded-confirmed 0. 382 inventory items remain, and resource area does not represent actual use."
+    "detail": "当前资源面可见 151 项；enabled-confirmed 0，loaded-confirmed 0。另有 382 条非可见资源投影，资源面积不代表实际使用。",
+    "detailEn": "151 resources are visible on the resource surface; enabled-confirmed 0, loaded-confirmed 0. 382 non-visible resource projections remain, and resource area does not represent actual use."
   },
   "systems": [
     {
@@ -14124,7 +14124,7 @@
       "reasonEn": "Plugin package lifecycle: bundled=true, installed=unknown, enabled=unknown, loaded=unknown"
     },
     {
-      "id": "asset:dcd3f8ac208492398da1:binding:05d5fbbeafc550528038",
+      "id": "asset:dcd3f8ac208492398da1:binding:5bb7f33744e109a63ff8",
       "name": "config.toml",
       "type": "config",
       "owner": "codex",
@@ -14132,8 +14132,8 @@
       "scope": "global",
       "path": "/Users/ada/.codex/config.toml",
       "projectPath": null,
-      "sizeBytes": 1890,
-      "modifiedAt": "2026-07-15T17:49:15.751Z",
+      "sizeBytes": 1908,
+      "modifiedAt": "2026-07-21T17:08:11.190Z",
       "signals": {
         "isDirectory": false
       },
@@ -14144,10 +14144,10 @@
         "linkTarget": null,
         "realpath": "/Users/ada/.codex/config.toml",
         "device": "16777220",
-        "inode": "77488853",
-        "sizeBytes": 1890,
-        "modifiedAt": "2026-07-15T17:49:15.751Z",
-        "contentHash": "dc91bd76b0e4b125e055b232f368bc77420c3a0679b301a5bab7e73ee752bf38",
+        "inode": "77833972",
+        "sizeBytes": 1908,
+        "modifiedAt": "2026-07-21T17:08:11.190Z",
+        "contentHash": "ca61371ed89ba176f4aff888bb6e355e1539b2990f7aa1455d3e603af955143a",
         "hashAlgorithm": "sha256-file-v1"
       },
       "states": {
@@ -14157,7 +14157,7 @@
           "evidenceIds": [
             "evidence:bdd456b59b2d99dbfbb3",
             "evidence:2f27d267799deaf11c9c",
-            "evidence:10b1ad7c70e679edcfb7"
+            "evidence:7282442204cf8e8485ea"
           ],
           "reason": "Aggregated from installation locations."
         },
@@ -14167,7 +14167,7 @@
           "evidenceIds": [
             "evidence:bdd456b59b2d99dbfbb3",
             "evidence:2f27d267799deaf11c9c",
-            "evidence:10b1ad7c70e679edcfb7"
+            "evidence:7282442204cf8e8485ea"
           ],
           "reason": "Aggregated from resource validation."
         },
@@ -14185,11 +14185,11 @@
         }
       },
       "graph": {
-        "canonicalSourceId": "canonical:0b045e16e1730283ab72",
-        "installationId": "installation:8ca6a6486880b451b534",
+        "canonicalSourceId": "canonical:4c5f2ca884d191dd54fc",
+        "installationId": "installation:df7865d9de19a87f497e",
         "locationId": "location:dcd3f8ac208492398da1",
         "bindingIds": [
-          "binding:05d5fbbeafc550528038"
+          "binding:5bb7f33744e109a63ff8"
         ],
         "pluginPackageId": null
       },
@@ -14200,14 +14200,14 @@
       "visible": true,
       "consumer": "codex",
       "consumerId": "consumer:8beb93e9d8c4f3b4c752",
-      "bindingId": "binding:05d5fbbeafc550528038",
-      "canonicalSourceId": "canonical:0b045e16e1730283ab72",
-      "installationId": "installation:8ca6a6486880b451b534",
+      "bindingId": "binding:5bb7f33744e109a63ff8",
+      "canonicalSourceId": "canonical:4c5f2ca884d191dd54fc",
+      "installationId": "installation:df7865d9de19a87f497e",
       "pluginPackageId": null,
       "diagnosisKinds": [],
       "lineage": {
         "canonical": {
-          "id": "canonical:0b045e16e1730283ab72",
+          "id": "canonical:4c5f2ca884d191dd54fc",
           "sourceType": "content-identity",
           "source": null,
           "sourceUrl": null,
@@ -14215,15 +14215,15 @@
           "confidence": "inferred"
         },
         "installation": {
-          "id": "installation:8ca6a6486880b451b534",
+          "id": "installation:df7865d9de19a87f497e",
           "role": "primary",
-          "physicalId": "16777220:77488853",
-          "contentHash": "dc91bd76b0e4b125e055b232f368bc77420c3a0679b301a5bab7e73ee752bf38",
+          "physicalId": "16777220:77833972",
+          "contentHash": "ca61371ed89ba176f4aff888bb6e355e1539b2990f7aa1455d3e603af955143a",
           "hashAlgorithm": "sha256-file-v1",
           "locationCount": 1
         },
         "binding": {
-          "id": "binding:05d5fbbeafc550528038",
+          "id": "binding:5bb7f33744e109a63ff8",
           "discovery": "default-root",
           "priority": 100,
           "visibility": "visible",
@@ -45956,7 +45956,7 @@
         "inode": "65559145",
         "sizeBytes": 96,
         "modifiedAt": "2026-04-26T05:01:53.515Z",
-        "contentHash": "3775caf9e1f82d7d4458918b98eea2beb10ebbc7efb384d77b15f44a5493fcab",
+        "contentHash": "73aff4478e060d3ef23f8a63de82b195a25adfb28e1b3c60887782c20b4937bb",
         "hashAlgorithm": "sha256-normalized-directory-v1"
       },
       "states": {
@@ -45966,7 +45966,7 @@
           "evidenceIds": [
             "evidence:49ae7d2779b935ffabca",
             "evidence:79c922a80cd1a6ff7c6b",
-            "evidence:ef613cf8f8a7ed9de467"
+            "evidence:883211536f1eee72a7cc"
           ],
           "reason": "Aggregated from installation locations."
         },
@@ -45976,7 +45976,7 @@
           "evidenceIds": [
             "evidence:49ae7d2779b935ffabca",
             "evidence:79c922a80cd1a6ff7c6b",
-            "evidence:ef613cf8f8a7ed9de467"
+            "evidence:883211536f1eee72a7cc"
           ],
           "reason": "Aggregated from resource validation."
         },
@@ -45994,7 +45994,7 @@
         }
       },
       "graph": {
-        "canonicalSourceId": "canonical:532c03cea94f3f008f22",
+        "canonicalSourceId": "canonical:243571817c56996bcaa0",
         "installationId": "installation:e846e1db960cad0fcdc8",
         "locationId": "location:3adfe46b408cbdabb728",
         "bindingIds": [],
@@ -46008,13 +46008,13 @@
       "consumer": null,
       "consumerId": null,
       "bindingId": null,
-      "canonicalSourceId": "canonical:532c03cea94f3f008f22",
+      "canonicalSourceId": "canonical:243571817c56996bcaa0",
       "installationId": "installation:e846e1db960cad0fcdc8",
       "pluginPackageId": null,
       "diagnosisKinds": [],
       "lineage": {
         "canonical": {
-          "id": "canonical:532c03cea94f3f008f22",
+          "id": "canonical:243571817c56996bcaa0",
           "sourceType": "content-identity",
           "source": null,
           "sourceUrl": null,
@@ -46025,7 +46025,7 @@
           "id": "installation:e846e1db960cad0fcdc8",
           "role": "primary",
           "physicalId": "16777220:65559145",
-          "contentHash": "3775caf9e1f82d7d4458918b98eea2beb10ebbc7efb384d77b15f44a5493fcab",
+          "contentHash": "73aff4478e060d3ef23f8a63de82b195a25adfb28e1b3c60887782c20b4937bb",
           "hashAlgorithm": "sha256-normalized-directory-v1",
           "locationCount": 1
         },
@@ -57645,7 +57645,7 @@
         "inode": "72429153",
         "sizeBytes": 576,
         "modifiedAt": "2026-07-16T18:36:00.896Z",
-        "contentHash": "55a012b6f869aa913f3bcc1ac5291ad3f2710c10bc6a3682fb99909dcaa2a48a",
+        "contentHash": "ba39fe9a5143a2d4e1599e970c34126fe56406c2b4c67b1ee57aaca49f71c6ed",
         "hashAlgorithm": "sha256-normalized-directory-v1"
       },
       "states": {
@@ -57655,7 +57655,7 @@
           "evidenceIds": [
             "evidence:f943ac1ac43233c4ac02",
             "evidence:f61a11833cd2ed4210f0",
-            "evidence:27d4676149adb1cbd458"
+            "evidence:3878dd01771496310c64"
           ],
           "reason": "Aggregated from installation locations."
         },
@@ -57665,7 +57665,7 @@
           "evidenceIds": [
             "evidence:f943ac1ac43233c4ac02",
             "evidence:f61a11833cd2ed4210f0",
-            "evidence:27d4676149adb1cbd458"
+            "evidence:3878dd01771496310c64"
           ],
           "reason": "Aggregated from resource validation."
         },
@@ -57683,7 +57683,7 @@
         }
       },
       "graph": {
-        "canonicalSourceId": "canonical:5d29ee69df1ddc207a64",
+        "canonicalSourceId": "canonical:b12de093b9dd83d26bd6",
         "installationId": "installation:9e4b368532de32a0fbbb",
         "locationId": "location:9716383e849f453e0b2d",
         "bindingIds": [],
@@ -57697,13 +57697,13 @@
       "consumer": null,
       "consumerId": null,
       "bindingId": null,
-      "canonicalSourceId": "canonical:5d29ee69df1ddc207a64",
+      "canonicalSourceId": "canonical:b12de093b9dd83d26bd6",
       "installationId": "installation:9e4b368532de32a0fbbb",
       "pluginPackageId": null,
       "diagnosisKinds": [],
       "lineage": {
         "canonical": {
-          "id": "canonical:5d29ee69df1ddc207a64",
+          "id": "canonical:b12de093b9dd83d26bd6",
           "sourceType": "content-identity",
           "source": null,
           "sourceUrl": null,
@@ -57714,7 +57714,7 @@
           "id": "installation:9e4b368532de32a0fbbb",
           "role": "primary",
           "physicalId": "16777220:72429153",
-          "contentHash": "55a012b6f869aa913f3bcc1ac5291ad3f2710c10bc6a3682fb99909dcaa2a48a",
+          "contentHash": "ba39fe9a5143a2d4e1599e970c34126fe56406c2b4c67b1ee57aaca49f71c6ed",
           "hashAlgorithm": "sha256-normalized-directory-v1",
           "locationCount": 1
         },

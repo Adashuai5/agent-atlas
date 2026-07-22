@@ -242,9 +242,12 @@ Outputs have different size contracts:
   resource evidence explorer, global default scope, project cascading
   selection, and per-scope AI Context.
 
-The compact HTML model may omit inactive detail rows to control file size. The
-full JSON remains the source of truth, and the full Markdown provides the
-untruncated AI-readable path.
+The compact HTML model retains all non-plugin resource projections in every
+scope and any plugin resource referenced by a structural diagnosis. Ordinary
+plugin component rows may be omitted because the package-level lifecycle view
+is the primary plugin projection. The full JSON remains the source of truth;
+full Markdown adds provenance, binding, identity, and state-evidence references
+for every resource row.
 
 ## Safety invariant
 

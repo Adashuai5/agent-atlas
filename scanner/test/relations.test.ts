@@ -257,6 +257,29 @@ test("same-name same-hash bindings at equal priority in one runtime are redundan
   ]);
 });
 
+test("two confirmed loaded bindings remain redundant when a third identical binding is unknown", () => {
+  const first = installation("first", { hash: "same-normalized-hash" });
+  const second = installation("second", { hash: "same-normalized-hash" });
+  const third = installation("third", { hash: "same-normalized-hash" });
+  const codex = consumer("consumer:codex", "codex");
+  const graph = atlasGraph(
+    [first, second, third],
+    [codex],
+    [
+      binding("binding:first", first.id, codex.id, { priority: 100, loaded: true }),
+      binding("binding:second", second.id, codex.id, { priority: 100, loaded: true }),
+      binding("binding:third", third.id, codex.id, { priority: 100, loaded: "unknown" })
+    ]
+  );
+
+  const redundant = evaluateDiagnoses(graph).find((item) => item.kind === "redundant");
+  assert.ok(redundant);
+  assert.deepEqual(redundant.bindingIds.sort(), ["binding:first", "binding:second"]);
+  assert.deepEqual(redundant.installationIds.sort(), [first.id, second.id].sort());
+  assert.ok(!redundant.bindingIds.includes("binding:third"));
+  assert.match(redundant.detailEn, /1 additional binding/);
+});
+
 test("same-name divergent bindings visible to one runtime are a conflict", () => {
   const first = installation("first", { hash: "hash-a" });
   const second = installation("second", { hash: "hash-b" });

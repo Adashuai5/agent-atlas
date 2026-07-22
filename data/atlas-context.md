@@ -1,14 +1,14 @@
 # Agent Atlas Context
 
 Schema: v2
-Generated: 2026\-07\-20T17:08:29\.212Z
+Generated: 2026\-07\-22T16:41:27\.881Z
 Scope: Global environment
 Health: healthy
 
 ## Current conclusion
 
 3 runtime consumers detected on this machine
-151 resources are visible on the resource surface; enabled\-confirmed 0, loaded\-confirmed 0\. 382 inventory items remain, and resource area does not represent actual use\.
+151 resources are visible on the resource surface; enabled\-confirmed 0, loaded\-confirmed 0\. 382 non\-visible resource projections remain, and resource area does not represent actual use\.
 
 ## Runtime consumers
 
@@ -214,4 +214,7 @@ Showing 120/162; omitted 42.
 ## Full context
 
 - Full Markdown for this scope and language: `data/atlas-context-full.md`
-- Authoritative structured graph: `data/atlas.json`
+
+## Authoritative structured evidence
+
+- Complete Evidence objects and the resolvable graph: `data/atlas.json`

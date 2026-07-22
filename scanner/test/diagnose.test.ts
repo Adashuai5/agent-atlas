@@ -246,7 +246,10 @@ test("a shadowed binding remains inventory while its consumer stays visible in t
   assert.ok(system);
   assert.equal(system.resources, 0);
   assert.equal(system.bindings.total, 1);
+  assert.equal(system.bindings.visible, 0);
   assert.equal(system.bindings.shadowed, 1);
+  assert.equal(system.health, "inactive");
+  assert.equal(system.resourceSurfaceWeight, 0);
   assert.deepEqual(system.states.enabled, { true: 1, false: 0, unknown: 0 });
 });
 
@@ -417,8 +420,33 @@ test("an explicitly disabled binding remains distinct from missing binding evide
   assert.ok(row);
   assert.equal(row.effective, false);
   assert.equal(row.states.enabled.value, false);
+  const system = snapshot.systems.find((item) => item.consumer === "hermes");
+  assert.ok(system);
+  assert.equal(system.bindings.visible, 1);
+  assert.equal(system.bindings.disabled, 1);
+  assert.equal(snapshot.evidenceLedger.bindings.visible, 1);
+  assert.equal(snapshot.evidenceLedger.bindings.visible + snapshot.evidenceLedger.bindings.shadowed + snapshot.evidenceLedger.bindings.visibilityUnknown, snapshot.evidenceLedger.bindings.total);
   assert.match(row.reason, /配置明确将其禁用/);
   assert.match(row.reasonEn, /configuration explicitly disables it/);
+});
+
+test("a visible invalid binding remains in the visibility denominator but not the resource surface", () => {
+  const stored = installation("invalid-visible", { valid: false });
+  const codex = consumer("consumer:codex", "codex");
+  const visible = binding("binding:invalid-visible", stored.id, codex.id);
+  const snapshot = buildSnapshot(atlasGraph({
+    installations: [stored],
+    consumers: [codex],
+    bindings: [visible],
+    assets: [asset(stored, [visible.id])]
+  }), null);
+
+  const row = snapshot.resources.find((resource) => resource.bindingId === visible.id);
+  assert.ok(row);
+  assert.equal(row.effective, false);
+  assert.equal(snapshot.evidenceLedger.bindings.visible, 1);
+  assert.equal(snapshot.evidenceLedger.bindings.total, 1);
+  assert.equal(snapshot.systems.find((system) => system.consumer === "codex")?.bindings.visible, 1);
 });
 
 test("a Codex conflict does not contaminate the Claude row or Claude system for a shared installation", () => {
@@ -458,6 +486,25 @@ test("a Codex conflict does not contaminate the Claude row or Claude system for 
     new Set(snapshot.resources.filter((resource) => [codexShared.id, codexDivergent.id].includes(resource.bindingId ?? "")).map((resource) => resource.id))
   );
   assert.equal(conflictIssue.assetIds.includes(claudeRow.id), false);
+});
+
+test("global conclusion counts non-visible resource projections without subtracting from asset count", () => {
+  const shared = installation("dual-runtime");
+  const codex = consumer("consumer:codex", "codex");
+  const claude = consumer("consumer:claude", "claude");
+  const codexBinding = binding("binding:codex", shared.id, codex.id);
+  const claudeBinding = binding("binding:claude", shared.id, claude.id);
+  const snapshot = buildSnapshot(atlasGraph({
+    installations: [shared],
+    consumers: [codex, claude],
+    bindings: [codexBinding, claudeBinding],
+    assets: [asset(shared, [codexBinding.id, claudeBinding.id])]
+  }), null);
+
+  assert.equal(snapshot.resources.length, 2);
+  assert.equal(snapshot.stats.effective, 2);
+  assert.match(snapshot.conclusion.detailEn, /0 non-visible resource projections/);
+  assert.doesNotMatch(snapshot.conclusion.detailEn, /-1/);
 });
 
 test("an invalid attention diagnosis makes the scope conclusion attention", () => {

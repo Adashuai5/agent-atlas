@@ -179,16 +179,28 @@ export function evaluateDiagnoses(atlas: Atlas, selectedProjectPath?: string | n
     };
     const name = installations[0].name;
     if (hashes.size === 1 && installations.every((installation) => installation.contentHash)) {
-      if (activeBindings.every((binding) => binding.loaded.value === true)) {
+      const loadedBindings = activeBindings.filter((binding) => binding.loaded.value === true);
+      const loadedInstallationIds = [...new Set(loadedBindings.map((binding) => binding.installationId))];
+      if (loadedInstallationIds.length >= 2) {
+        const loadedInstallations = loadedInstallationIds
+          .map((id) => installationById.get(id))
+          .filter((item): item is Installation => Boolean(item));
+        const loadedConsumers = [...new Set(loadedBindings.map((binding) => binding.consumerId))];
+        const unconfirmedCount = activeBindings.length - loadedBindings.length;
         diagnoses.push(diagnosis({
-          ...common,
+          consumerId: loadedConsumers.length === 1 ? loadedConsumers[0] : null,
+          canonicalSourceIds: canonicalIds(loadedInstallations),
+          installationIds: loadedInstallationIds,
+          bindingIds: loadedBindings.map((binding) => binding.id),
+          pluginPackageIds: [...new Set(loadedInstallations.map((installation) => installation.pluginPackageId).filter((id): id is string => Boolean(id)))],
+          evidenceIds: evidenceFor(loadedInstallations, loadedBindings),
           kind: "redundant",
           severity: "attention",
           confidence: "confirmed",
           title: `${group.runtime} 重复加载了 ${name} 的多个内容一致安装`,
           titleEn: `${group.runtime} loaded multiple content-identical installations of ${name}`,
-          detail: "同一运行时的多个 loaded=true 绑定指向不同物理安装，但标准化内容 hash 一致。",
-          detailEn: "Multiple loaded=true bindings in one runtime point to distinct physical installations with the same normalized hash.",
+          detail: `同一运行时的多个 loaded=true 绑定指向不同物理安装，但标准化内容 hash 一致。${unconfirmedCount ? `另有 ${unconfirmedCount} 个同组 binding 尚未确认 loaded。` : ""}`,
+          detailEn: `Multiple loaded=true bindings in one runtime point to distinct physical installations with the same normalized hash.${unconfirmedCount ? ` ${unconfirmedCount} additional binding(s) in the group remain unconfirmed for loading.` : ""}`,
           action: "确认运行时搜索优先级；在保留可回滚路径的前提下评估冗余。",
           actionEn: "Confirm runtime search precedence and assess redundancy while keeping a rollback path.",
         }));
